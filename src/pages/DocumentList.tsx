@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import BankReconcile from '../components/BankReconcile';
+import SalesSummary from '../components/SalesSummary';
 import { useAuth } from '../contexts/AuthContext';
 import {
   DOC_TYPES,
@@ -52,9 +53,11 @@ export default function DocumentList({ type }: { type: DocType }) {
     reload();
   }, [type]);
 
-  // 取消以外で、入金（支払）がまだのもの。発注書は源泉徴収税の未払いも含む
+  // 入金（支払）がまだのもの。請求書は売上集計と同じく「発行済」のみ（下書きは含めない）。
+  // 発注書は取消以外で、源泉徴収税の未払いも含む
   const isUnpaid = (d: StoredDocument) =>
     d.status !== 'cancelled' &&
+    !(isInvoice && d.status === 'draft') &&
     (d.status !== 'paid' || (isPO && d.withholdingEnabled && !d.withholdingPaidDate));
 
   const filtered = useMemo(() => {
@@ -70,7 +73,7 @@ export default function DocumentList({ type }: { type: DocType }) {
   const active = filtered.filter((d) => d.status !== 'cancelled');
   const sumTotal = active.reduce((s, d) => s + d.totals.total, 0);
   const sumUnpaid = active
-    .filter((d) => d.status !== 'paid')
+    .filter((d) => d.status !== 'paid' && !(isInvoice && d.status === 'draft'))
     .reduce((s, d) => s + (isPO ? d.totals.payable : d.totals.total), 0);
   const sumWithholdingUnpaid = active
     .filter((d) => d.withholdingEnabled && !d.withholdingPaidDate)
@@ -129,6 +132,17 @@ export default function DocumentList({ type }: { type: DocType }) {
           </button>
         </div>
       </div>
+
+      {isInvoice && !loading && !error && (
+        <SalesSummary
+          invoices={docs}
+          selectedMonth={month}
+          onSelectMonth={(m) => {
+            setMonth(m);
+            setStatus('');
+          }}
+        />
+      )}
 
       <div className="filters card">
         <select value={status} onChange={(e) => setStatus(e.target.value as DocStatus | 'unpaid' | '')}>
