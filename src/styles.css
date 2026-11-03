@@ -190,7 +190,6 @@ select.status { width: auto; padding: 2px 6px; font-size: 12px; }
 .sheet:has(.pv-receipt-amount) { min-height: 148mm; }
 .pv-receipt-amount { display: flex; align-items: baseline; justify-content: center; gap: 6mm; background: #f1f3f6; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 3mm; margin: 6mm 10mm 4mm; }
 .pv-receipt-amount .pv-value { font-size: 22pt; font-weight: 700; letter-spacing: .05em; }
-.pv-receipt-withholding { text-align: center; font-size: 9pt; margin: -2mm 0 3mm; }
 .pv-receipt-purpose { text-align: center; font-size: 11pt; margin-bottom: 2mm; }
 .sheet:has(.pv-receipt-amount) .pv-lead { text-align: center; }
 .sheet:has(.pv-receipt-amount) .pv-recipient { margin-top: 4mm; }

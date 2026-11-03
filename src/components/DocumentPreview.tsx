@@ -18,9 +18,6 @@ export default function DocumentPreview({ doc, company }: Props) {
   const emptyRows = Math.max(0, MIN_ROWS - doc.items.length);
   const withholding = doc.withholdingEnabled && info.supportsWithholding;
   const hasNonWithholdingItem = withholding && doc.items.some((i) => !isWithholdingItem(i));
-  // 請求書・領収書は源泉徴収税控除後の金額（実際に受け取る額）を大きく表示する
-  const showPayableAsAmount = withholding && (doc.type === 'invoice' || doc.type === 'receipt');
-  const headlineAmount = showPayableAsAmount ? totals.payable : totals.total;
   const withholdingNote = withholding && (
     <div className="pv-small">
       源泉徴収税額は{doc.withholdingBaseMode === 'net' ? '税抜' : '税込'}金額 {formatYen(totals.withholdingBase)}{' '}
@@ -107,20 +104,14 @@ export default function DocumentPreview({ doc, company }: Props) {
         {recipient}
         <div className="pv-receipt-amount">
           <span className="pv-label">{info.amountLabel}</span>
-          <span className="pv-value">{formatYen(headlineAmount)}-</span>
-          <span className="pv-sub">{showPayableAsAmount ? '（源泉徴収税控除後）' : '（税込）'}</span>
+          <span className="pv-value">{formatYen(totals.total)}-</span>
+          <span className="pv-sub">（税込）</span>
         </div>
-        {withholding && (
-          <div className="pv-receipt-withholding">
-            税込金額 {formatYen(totals.total)} − 源泉徴収税額 {formatYen(totals.withholdingTax)}
-          </div>
-        )}
         <div className="pv-receipt-purpose">但し {doc.receiptPurpose || '　'} として</div>
         <div className="pv-lead">{info.lead}</div>
         <div className="pv-receipt-bottom">
           <div>
             {rateTable}
-            {withholdingNote}
             {doc.paymentMethod && <div className="pv-small">お支払方法: {doc.paymentMethod}</div>}
             {doc.subject && <div className="pv-small">件名: {doc.subject}</div>}
           </div>
@@ -150,8 +141,8 @@ export default function DocumentPreview({ doc, company }: Props) {
           <div className="pv-lead">{info.lead}</div>
           <div className="pv-amount">
             <span className="pv-label">{info.amountLabel}</span>
-            <span className="pv-value">{formatYen(headlineAmount)}</span>
-            <span className="pv-sub">{showPayableAsAmount ? '（源泉徴収税控除後）' : '（税込）'}</span>
+            <span className="pv-value">{formatYen(totals.total)}</span>
+            <span className="pv-sub">（税込）</span>
           </div>
           <table className="pv-conditions">
             <tbody>
@@ -179,7 +170,7 @@ export default function DocumentPreview({ doc, company }: Props) {
                   <td>{doc.deliveryPlace}</td>
                 </tr>
               )}
-              {doc.type === 'purchase_order' && withholding && (
+              {withholding && (
                 <tr>
                   <th>差引支払額</th>
                   <td>{formatYen(totals.payable)}（源泉徴収税 {formatYen(totals.withholdingTax)} 控除後）</td>
@@ -263,7 +254,7 @@ export default function DocumentPreview({ doc, company }: Props) {
                   <td className="num">−{formatYen(totals.withholdingTax)}</td>
                 </tr>
                 <tr className="pv-grand">
-                  <th>{doc.type === 'invoice' ? 'ご請求金額' : '差引支払額'}</th>
+                  <th>差引支払額</th>
                   <td className="num">{formatYen(totals.payable)}</td>
                 </tr>
               </>

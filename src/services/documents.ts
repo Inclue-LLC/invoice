@@ -13,6 +13,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { DOC_TYPES } from '../lib/docTypes';
 import type { DocStatus, DocType, DocumentData, StoredDocument } from '../types';
 
 const col = () => collection(db, 'documents');
@@ -24,7 +25,8 @@ export function normalizeDocument(raw: Partial<DocumentData>): DocumentData {
   return {
     ...d,
     clientType: d.clientType ?? 'corporate',
-    withholdingEnabled: d.withholdingEnabled ?? false,
+    // 源泉徴収は対応する種別（発注書）のみ有効
+    withholdingEnabled: Boolean(d.withholdingEnabled) && Boolean(DOC_TYPES[d.type]?.supportsWithholding),
     withholdingBaseMode: d.withholdingBaseMode ?? 'net',
     totals: {
       subtotal: d.totals?.subtotal ?? 0,

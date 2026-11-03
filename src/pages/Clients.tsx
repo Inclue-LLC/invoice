@@ -126,7 +126,7 @@ export default function Clients() {
                 checked={editing.data.withholding}
                 onChange={(e) => set('withholding', e.target.checked)}
               />
-              源泉徴収の対象（この取引先を選んだ請求書・発注書・領収書で、源泉徴収を自動でオンにします）
+              源泉徴収の対象（この取引先を選んだ発注書で、源泉徴収を自動でオンにします）
             </label>
             <label className="span-2">
               メモ

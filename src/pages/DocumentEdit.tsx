@@ -120,7 +120,7 @@ export default function DocumentEdit() {
     () =>
       doc
         ? calcTotals(doc.items, doc.taxMode, doc.rounding, {
-            enabled: doc.withholdingEnabled,
+            enabled: DOC_TYPES[doc.type].supportsWithholding && doc.withholdingEnabled,
             baseMode: doc.withholdingBaseMode,
           })
         : null,
@@ -177,8 +177,9 @@ export default function DocumentEdit() {
       const data: DocumentData = {
         ...doc,
         items,
+        withholdingEnabled: info.supportsWithholding && doc.withholdingEnabled,
         totals: calcTotals(items, doc.taxMode, doc.rounding, {
-          enabled: doc.withholdingEnabled,
+          enabled: info.supportsWithholding && doc.withholdingEnabled,
           baseMode: doc.withholdingBaseMode,
         }),
         updatedBy: email,
@@ -473,7 +474,7 @@ export default function DocumentEdit() {
               <span>消費税 ¥{totals.tax.toLocaleString('ja-JP')}</span>
               <strong>合計 ¥{totals.total.toLocaleString('ja-JP')}</strong>
             </div>
-            {doc.withholdingEnabled && (
+            {info.supportsWithholding && doc.withholdingEnabled && (
               <div className="totals-inline">
                 <span>
                   源泉徴収税（対象 ¥{totals.withholdingBase.toLocaleString('ja-JP')}） −¥
