@@ -118,7 +118,7 @@ export default function DocumentList({ type }: { type: DocType }) {
         <h2>{info.label}一覧</h2>
         <div className="actions">
           <button className="btn btn-primary btn-lg" onClick={() => navigate(newPath(type))}>
-            ＋ 新規作成
+            ＋ {info.label}を新規作成
           </button>
         </div>
       </div>
