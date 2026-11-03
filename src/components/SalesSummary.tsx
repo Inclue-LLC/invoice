@@ -4,10 +4,8 @@ import { salesYears, summarizeSales, type SalesMode, type SalesRow, type SalesSo
 
 interface Props {
   invoices: SalesSource[];
-  /** 月の行をクリックしたとき（"2026-11"）。一覧をその月で絞り込む */
+  /** 月の行をクリックしたとき（"2026-11"）。その月の請求書一覧を開く */
   onSelectMonth?: (month: string) => void;
-  /** 一覧で絞り込み中の月（行を強調表示する） */
-  selectedMonth?: string;
 }
 
 const STORAGE_KEY = 'salesSummary.mode';
@@ -20,7 +18,7 @@ function loadMode(): SalesMode {
   }
 }
 
-export default function SalesSummary({ invoices, onSelectMonth, selectedMonth }: Props) {
+export default function SalesSummary({ invoices, onSelectMonth }: Props) {
   const currentYear = new Date().getFullYear();
   const [mode, setModeState] = useState<SalesMode>(loadMode);
   const years = useMemo(() => salesYears(invoices, currentYear), [invoices, currentYear]);
@@ -121,14 +119,13 @@ export default function SalesSummary({ invoices, onSelectMonth, selectedMonth }:
             <tbody>
               {rows.map((r) => {
                 const clickable = mode === 'month' && onSelectMonth && r.count > 0;
-                const selected = mode === 'month' && selectedMonth === r.key;
                 const tip = `${rowLabel(r)}　発行額 ${formatYen(r.issued)}（${r.count}件）\n入金済 ${formatYen(r.paid)}\n未入金 ${formatYen(r.unpaid)}`;
                 return (
                   <tr
                     key={r.key}
-                    className={`${r.count === 0 ? 'zero' : ''} ${clickable ? 'clickable' : ''} ${selected ? 'selected' : ''} ${isCurrent(r) ? 'current' : ''}`}
-                    onClick={clickable ? () => onSelectMonth!(selected ? '' : r.key) : undefined}
-                    title={clickable ? (selected ? 'クリックで絞り込みを解除' : 'クリックでこの月の請求書を表示') : undefined}
+                    className={`${r.count === 0 ? 'zero' : ''} ${clickable ? 'clickable' : ''} ${isCurrent(r) ? 'current' : ''}`}
+                    onClick={clickable ? () => onSelectMonth!(r.key) : undefined}
+                    title={clickable ? 'クリックでこの月の請求書一覧を表示' : undefined}
                   >
                     <td>
                       {rowLabel(r)}
@@ -165,7 +162,7 @@ export default function SalesSummary({ invoices, onSelectMonth, selectedMonth }:
       )}
       <p className="muted small sales-note">
         発行日で集計（税込）。状態が「発行済」「入金済」の請求書が対象で、下書き・取消は含みません。
-        {mode === 'month' && onSelectMonth && '月をクリックすると、下の一覧をその月の請求書に絞り込みます。'}
+        {mode === 'month' && onSelectMonth && '月をクリックすると、その月の請求書一覧を開きます。'}
       </p>
     </section>
   );

@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useNavigate } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { allowedDomain, auth } from '../firebase';
-import { listPath } from '../lib/docTypes';
 import { isInvited } from '../services/members';
 
 interface AuthState {
@@ -53,9 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setIsDomainUser(false);
       } else {
-        // ログインした直後は、開いていたページに関係なく請求書一覧を表示する
+        // ログインした直後は、開いていたページに関係なく売上管理を表示する
         // （ページの再読み込みでログイン状態が復元された場合は、今のページのまま）
-        if (!isRestore) navigate(listPath('invoice'), { replace: true });
+        if (!isRestore) navigate('/sales', { replace: true });
         setUser(u);
         setIsDomainUser(domain);
       }

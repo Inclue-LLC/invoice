@@ -2,12 +2,13 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useAuth } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
-import { DOC_TYPES, DOC_TYPE_ORDER, listPath } from './lib/docTypes';
+import { DOC_TYPES, DOC_TYPE_ORDER } from './lib/docTypes';
 import Clients from './pages/Clients';
 import DocumentEdit from './pages/DocumentEdit';
 import DocumentList from './pages/DocumentList';
 import DocumentPrint from './pages/DocumentPrint';
 import Login from './pages/Login';
+import Sales from './pages/Sales';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
 
@@ -23,8 +24,9 @@ export default function App() {
           <Route key={`${t}-print`} path={`/${DOC_TYPES[t].path}/:id/print`} element={<DocumentPrint type={t} />} />
         ))}
         <Route element={<Layout />}>
-          {/* 最初のページは請求書一覧 */}
-          <Route path="/" element={<Navigate to={listPath('invoice')} replace />} />
+          {/* 最初のページは売上管理 */}
+          <Route path="/" element={<Navigate to="/sales" replace />} />
+          <Route path="/sales" element={<Sales />} />
           {DOC_TYPE_ORDER.map((t) => (
             <Route key={t} path={`/${DOC_TYPES[t].path}`}>
               <Route index element={<DocumentList key={t} type={t} />} />
@@ -35,7 +37,7 @@ export default function App() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/users" element={<Users />} />
-          <Route path="*" element={<Navigate to={listPath('invoice')} replace />} />
+          <Route path="*" element={<Navigate to="/sales" replace />} />
         </Route>
       </Routes>
     </SettingsProvider>

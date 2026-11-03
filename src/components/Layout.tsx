@@ -9,6 +9,8 @@ export default function Layout() {
       <header className="app-header no-print">
         <div className="brand">帳票発行ツール</div>
         <nav>
+          <NavLink to="/sales">売上管理</NavLink>
+          <span className="nav-sep" />
           {DOC_TYPE_ORDER.map((t) => (
             <NavLink key={t} to={listPath(t)}>
               {DOC_TYPES[t].label}

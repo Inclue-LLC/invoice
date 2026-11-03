@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import BankReconcile from '../components/BankReconcile';
-import SalesSummary from '../components/SalesSummary';
 import { useAuth } from '../contexts/AuthContext';
 import {
   DOC_TYPES,
@@ -32,9 +31,16 @@ export default function DocumentList({ type }: { type: DocType }) {
   const [docs, setDocs] = useState<StoredDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [status, setStatus] = useState<DocStatus | 'unpaid' | ''>('');
+  // 売上管理などから ?month=2026-10 / ?status=unpaid 付きで開かれたときは、その条件で絞り込む
+  const [params] = useSearchParams();
+  const initialStatus = () => {
+    const s = params.get('status') ?? '';
+    return (s === 'unpaid' || (statusesFor(type) as string[]).includes(s) ? s : '') as DocStatus | 'unpaid' | '';
+  };
+  const initialMonth = () => (/^\d{4}-\d{2}$/.test(params.get('month') ?? '') ? params.get('month')! : '');
+  const [status, setStatus] = useState<DocStatus | 'unpaid' | ''>(initialStatus);
   const [keyword, setKeyword] = useState('');
-  const [month, setMonth] = useState('');
+  const [month, setMonth] = useState(initialMonth);
   const [busyId, setBusyId] = useState('');
   const [showReconcile, setShowReconcile] = useState(false);
 
@@ -47,11 +53,16 @@ export default function DocumentList({ type }: { type: DocType }) {
       .finally(() => setLoading(false));
   };
   useEffect(() => {
-    setStatus('');
     setKeyword('');
-    setMonth('');
     reload();
   }, [type]);
+
+  // URL の条件（?month= / ?status=）が変わったら絞り込みを合わせる（メニューから開き直したときは解除）
+  const search = params.toString();
+  useEffect(() => {
+    setStatus(initialStatus());
+    setMonth(initialMonth());
+  }, [type, search]);
 
   // 入金（支払）がまだのもの。請求書は売上集計と同じく「発行済」のみ（下書きは含めない）。
   // 発注書は取消以外で、源泉徴収税の未払いも含む
@@ -132,17 +143,6 @@ export default function DocumentList({ type }: { type: DocType }) {
           </button>
         </div>
       </div>
-
-      {isInvoice && !loading && !error && (
-        <SalesSummary
-          invoices={docs}
-          selectedMonth={month}
-          onSelectMonth={(m) => {
-            setMonth(m);
-            setStatus('');
-          }}
-        />
-      )}
 
       <div className="filters card">
         <select value={status} onChange={(e) => setStatus(e.target.value as DocStatus | 'unpaid' | '')}>
