@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// 社内ユーザーのみアクセスを許可します。
+// ドメインを変更する場合は ALLOWED_DOMAIN の正規表現と .env の VITE_ALLOWED_DOMAIN を合わせて変更してください。
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isMember() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@inclue-llc[.]jp$');
+    }
+
+    function validDocument(d) {
+      return d.type in ['invoice', 'purchase_order', 'delivery_note', 'receipt']
+        && d.status in ['draft', 'issued', 'paid', 'cancelled']
+        && d.number is string && d.number.size() <= 64
+        && d.items is list && d.items.size() <= 200;
+    }
+
+    // 帳票
+    match /documents/{docId} {
+      allow read, delete: if isMember();
+      allow create: if isMember() && validDocument(request.resource.data)
+        && request.resource.data.createdBy == request.auth.token.email;
+      allow update: if isMember() && validDocument(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy;
+    }
+
+    // 取引先マスタ
+    match /clients/{clientId} {
+      allow read, write: if isMember();
+    }
+
+    // 自社情報などの設定
+    match /settings/{settingId} {
+      allow read, write: if isMember();
+    }
+
+    // 採番カウンタ（値は単調増加のみ許可）
+    match /counters/{counterId} {
+      allow read: if isMember();
+      allow create: if isMember() && request.resource.data.seq is int;
+      allow update: if isMember() && request.resource.data.seq is int
+        && request.resource.data.seq > resource.data.seq;
+    }
+  }
+}
