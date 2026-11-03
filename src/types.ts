@@ -83,6 +83,10 @@ export interface DocumentData {
   receiptPurpose: string;
   /** 領収書: 支払方法 */
   paymentMethod: string;
+  /** 請求書: 入金日 / 発注書: 支払日（YYYY-MM-DD、未払いは空） */
+  paidDate: string;
+  /** 発注書: 源泉徴収税の支払（納付）日（YYYY-MM-DD、未払いは空） */
+  withholdingPaidDate: string;
   /** 変換元の帳票ID */
   sourceDocId: string | null;
   createdBy: string;

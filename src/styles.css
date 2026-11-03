@@ -92,8 +92,8 @@ textarea { resize: vertical; }
 .ellipsis { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-actions { white-space: nowrap; text-align: right; }
 .row-actions > * + * { margin-left: 4px; }
-.row-cancelled td { color: #999; text-decoration: line-through; }
-.row-cancelled td:last-child, .row-cancelled td:nth-last-child(2) { text-decoration: none; }
+.row-cancelled td { color: #999; }
+.row-cancelled td:first-child, .row-cancelled td:nth-child(5) { text-decoration: line-through; }
 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
 .badge-invoice { background: #ddf4ff; color: #0550ae; }
@@ -102,6 +102,7 @@ textarea { resize: vertical; }
 .badge-receipt { background: #fff1e5; color: #bc4c00; }
 .badge-corporate { background: #eef1f4; color: #424a53; }
 .badge-individual { background: #fff8c5; color: #7d4e00; }
+.badge-individual { margin-left: 6px; }
 .badge-withholding { background: #ffebe9; color: #a40e26; margin-left: 4px; }
 select.status { width: auto; padding: 2px 6px; font-size: 12px; }
 .status-draft { background: #f6f8fa; }
@@ -220,3 +221,18 @@ select.status { width: auto; padding: 2px 6px; font-size: 12px; }
   .items-editor tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border-bottom: 1px solid var(--border); padding: 6px 0; }
   .items-editor td:first-child { grid-column: span 2; }
 }
+
+/* 一覧: 合計・入金/支払ボタン */
+.summary { display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--muted); }
+.summary .warn { color: #9a3412; font-weight: 600; }
+.overdue { color: var(--danger); font-weight: 600; }
+.pay-cell { white-space: nowrap; }
+.btn-pay { border-color: #2da44e; color: #116329; background: #f0fff4; }
+.btn-pay:hover { background: #dafbe1; }
+.paid-mark { color: #116329; font-weight: 600; font-size: 13px; }
+.link-btn { background: none; border: none; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 11px; padding: 0 0 0 6px; width: auto; }
+.link-btn:hover { color: var(--danger); }
+.input-with-btn { display: flex; gap: 6px; align-items: center; }
+.input-with-btn input { flex: 1; }
+.nav-sep { width: 1px; background: rgba(255,255,255,.3); margin: 6px 8px; }
+.empty p { margin: 0 0 12px; }

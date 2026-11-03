@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DocumentPreview from '../components/DocumentPreview';
 import ItemsEditor from '../components/ItemsEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { calcTotals, newItem } from '../lib/calc';
-import { CLIENT_TYPE_LABELS, DOC_TYPES, DOC_TYPE_ORDER, STATUS_LABELS, isDocType } from '../lib/docTypes';
-import { calcDueDate, todayIso } from '../lib/format';
+import {
+  CLIENT_TYPE_LABELS,
+  DOC_TYPES,
+  DOC_TYPE_ORDER,
+  WITHHOLDING_PAID_LABEL,
+  editPath,
+  listPath,
+  newPath,
+  printPath,
+  statusLabel,
+  statusesFor,
+} from '../lib/docTypes';
+import { calcDueDate, formatYen, todayIso } from '../lib/format';
 import { listClients } from '../services/clients';
 import { createDocument, getDocument, nextDocumentNumber, updateDocument } from '../services/documents';
 import type { Client, ClientType, CompanySettings, DocStatus, DocType, DocumentData, Honorific } from '../types';
@@ -39,15 +50,18 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     paymentTerms: '',
     receiptPurpose: '',
     paymentMethod: type === 'receipt' ? '銀行振込' : '',
+    paidDate: '',
+    withholdingPaidDate: '',
     sourceDocId: null,
     createdBy: email,
     updatedBy: email,
   };
 }
 
-/** 既存の帳票から別種別（または同種別）の新規帳票を作る */
+/** 既存の帳票から別種別（同種別ならコピー）の新規帳票を作る。番号・日付・状態は新しくする */
 function deriveDocument(src: DocumentData, srcId: string, type: DocType, s: CompanySettings, email: string): DocumentData {
   const base = blankDocument(type, s, email);
+  const same = src.type === type;
   return {
     ...base,
     clientId: src.clientId,
@@ -67,11 +81,12 @@ function deriveDocument(src: DocumentData, srcId: string, type: DocType, s: Comp
     paymentTerms: src.paymentTerms ?? '',
     receiptPurpose: type === 'receipt' ? src.receiptPurpose || src.subject || 'お品代' : '',
     paymentMethod: src.paymentMethod || base.paymentMethod,
+    bankInfo: same ? src.bankInfo : base.bankInfo,
     sourceDocId: srcId,
   };
 }
 
-export default function DocumentEdit() {
+export default function DocumentEdit({ type: routeType }: { type: DocType }) {
   const { id } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -85,7 +100,6 @@ export default function DocumentEdit() {
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
 
-  const qType = params.get('type');
   const fromId = params.get('from');
 
   useEffect(() => {
@@ -104,7 +118,7 @@ export default function DocumentEdit() {
         void _omit;
         setDoc(rest);
       } else {
-        const type: DocType = isDocType(qType) ? qType : 'invoice';
+        const type = routeType;
         if (fromId) {
           const src = await getDocument(fromId);
           if (!src) throw new Error('複製元の帳票が見つかりません');
@@ -114,7 +128,7 @@ export default function DocumentEdit() {
         }
       }
     })().catch((e) => setError(String(e instanceof Error ? e.message : e)));
-  }, [id, qType, fromId, settingsLoading, settings, email]);
+  }, [id, routeType, fromId, settingsLoading, settings, email]);
 
   const totals = useMemo(
     () =>
@@ -129,6 +143,8 @@ export default function DocumentEdit() {
 
   if (error) return <div className="page"><div className="alert alert-error">{error}</div></div>;
   if (!doc || !totals) return <div className="page"><p className="muted">読み込み中…</p></div>;
+  // URL の種別と帳票の種別が違う場合は正しい URL に移動する
+  if (id && doc.type !== routeType) return <Navigate to={editPath(doc.type, id)} replace />;
 
   const info = DOC_TYPES[doc.type];
   const set = <K extends keyof DocumentData>(key: K, value: DocumentData[K]) =>
@@ -156,6 +172,14 @@ export default function DocumentEdit() {
 
   const changeClientType = (t: ClientType) =>
     setDoc((d) => (d ? { ...d, clientType: t, clientHonorific: t === 'individual' ? '様' : '御中' } : d));
+
+  const changeStatus = (s: DocStatus) =>
+    setDoc((d) => (d ? { ...d, status: s, paidDate: s === 'paid' ? d.paidDate || todayIso() : '' } : d));
+
+  const changePaidDate = (v: string) =>
+    setDoc((d) =>
+      d ? { ...d, paidDate: v, status: v ? 'paid' : d.status === 'paid' ? 'issued' : d.status } : d,
+    );
 
   const changeIssueDate = (v: string) => {
     setDoc((d) => {
@@ -195,7 +219,7 @@ export default function DocumentEdit() {
         docId = await createDocument(data);
       }
       setDoc(data);
-      navigate(afterSave === 'print' ? `/documents/${docId}/print` : `/documents/${docId}`, { replace: !id });
+      navigate(afterSave === 'print' ? printPath(data.type, docId) : editPath(data.type, docId), { replace: !id });
     } catch (e) {
       setError(`保存に失敗しました: ${String(e)}`);
     } finally {
@@ -216,21 +240,27 @@ export default function DocumentEdit() {
           <button className="btn" onClick={() => setShowPreview((v) => !v)}>
             プレビュー{showPreview ? 'を隠す' : 'を表示'}
           </button>
+          <Link className="btn" to={listPath(doc.type)}>
+            ← 一覧
+          </Link>
           {id && (
-            <div className="dropdown">
+            <>
+              <button className="btn" onClick={() => navigate(newPath(doc.type, id))} title="この帳票をコピーして新規作成">
+                コピー
+              </button>
               <select
                 className="btn"
                 value=""
-                onChange={(e) => e.target.value && navigate(`/documents/new?type=${e.target.value}&from=${id}`)}
+                onChange={(e) => e.target.value && navigate(newPath(e.target.value as DocType, id))}
               >
-                <option value="">この内容で作成…</option>
-                {DOC_TYPE_ORDER.map((t) => (
+                <option value="">別の帳票を作成…</option>
+                {DOC_TYPE_ORDER.filter((t) => t !== doc.type).map((t) => (
                   <option key={t} value={t}>
                     {DOC_TYPES[t].label}を作成
                   </option>
                 ))}
               </select>
-            </div>
+            </>
           )}
           <button className="btn" disabled={saving} onClick={() => void save('stay')}>
             保存
@@ -258,7 +288,7 @@ export default function DocumentEdit() {
                 <select
                   value={doc.type}
                   disabled={Boolean(id)}
-                  onChange={(e) => navigate(`/documents/new?type=${e.target.value}`, { replace: true })}
+                  onChange={(e) => navigate(newPath(e.target.value as DocType), { replace: true })}
                 >
                   {DOC_TYPE_ORDER.map((t) => (
                     <option key={t} value={t}>
@@ -281,14 +311,48 @@ export default function DocumentEdit() {
               </label>
               <label>
                 状態
-                <select value={doc.status} onChange={(e) => set('status', e.target.value as DocStatus)}>
-                  {(Object.keys(STATUS_LABELS) as DocStatus[]).map((s) => (
+                <select value={doc.status} onChange={(e) => changeStatus(e.target.value as DocStatus)}>
+                  {statusesFor(doc.type).map((s) => (
                     <option key={s} value={s}>
-                      {STATUS_LABELS[s]}
+                      {statusLabel(doc.type, s)}
                     </option>
                   ))}
                 </select>
               </label>
+              {info.paidLabel && (
+                <label>
+                  {doc.type === 'invoice' ? '入金日' : '支払日'}
+                  <div className="input-with-btn">
+                    <input type="date" value={doc.paidDate} onChange={(e) => changePaidDate(e.target.value)} />
+                    {!doc.paidDate && (
+                      <button type="button" className="btn btn-sm btn-pay" onClick={() => changePaidDate(todayIso())}>
+                        {info.paidLabel}にする
+                      </button>
+                    )}
+                  </div>
+                </label>
+              )}
+              {info.supportsWithholding && doc.withholdingEnabled && (
+                <label>
+                  源泉徴収税の支払日（{formatYen(totals.withholdingTax)}）
+                  <div className="input-with-btn">
+                    <input
+                      type="date"
+                      value={doc.withholdingPaidDate}
+                      onChange={(e) => set('withholdingPaidDate', e.target.value)}
+                    />
+                    {!doc.withholdingPaidDate && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-pay"
+                        onClick={() => set('withholdingPaidDate', todayIso())}
+                      >
+                        {WITHHOLDING_PAID_LABEL}にする
+                      </button>
+                    )}
+                  </div>
+                </label>
+              )}
             </div>
           </section>
 

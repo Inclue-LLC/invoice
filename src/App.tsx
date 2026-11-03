@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useAuth } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { DOC_TYPES, DOC_TYPE_ORDER, listPath } from './lib/docTypes';
 import Clients from './pages/Clients';
 import DocumentEdit from './pages/DocumentEdit';
 import DocumentList from './pages/DocumentList';
@@ -17,14 +18,22 @@ export default function App() {
   return (
     <SettingsProvider>
       <Routes>
-        <Route path="/documents/:id/print" element={<DocumentPrint />} />
+        {DOC_TYPE_ORDER.map((t) => (
+          <Route key={`${t}-print`} path={`/${DOC_TYPES[t].path}/:id/print`} element={<DocumentPrint type={t} />} />
+        ))}
         <Route element={<Layout />}>
-          <Route path="/" element={<DocumentList />} />
-          <Route path="/documents/new" element={<DocumentEdit />} />
-          <Route path="/documents/:id" element={<DocumentEdit />} />
+          {/* 最初のページは請求書一覧 */}
+          <Route path="/" element={<Navigate to={listPath('invoice')} replace />} />
+          {DOC_TYPE_ORDER.map((t) => (
+            <Route key={t} path={`/${DOC_TYPES[t].path}`}>
+              <Route index element={<DocumentList key={t} type={t} />} />
+              <Route path="new" element={<DocumentEdit key={`${t}-new`} type={t} />} />
+              <Route path=":id" element={<DocumentEdit key={`${t}-edit`} type={t} />} />
+            </Route>
+          ))}
           <Route path="/clients" element={<Clients />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to={listPath('invoice')} replace />} />
         </Route>
       </Routes>
     </SettingsProvider>

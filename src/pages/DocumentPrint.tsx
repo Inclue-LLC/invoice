@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import DocumentPreview from '../components/DocumentPreview';
 import { useSettings } from '../contexts/SettingsContext';
-import { DOC_TYPES } from '../lib/docTypes';
+import { DOC_TYPES, editPath, listPath } from '../lib/docTypes';
 import { getDocument } from '../services/documents';
-import type { StoredDocument } from '../types';
+import type { DocType, StoredDocument } from '../types';
 
-export default function DocumentPrint() {
+export default function DocumentPrint({ type }: { type: DocType }) {
   const { id } = useParams();
   const { settings, loading } = useSettings();
   const [doc, setDoc] = useState<StoredDocument | null>(null);
@@ -35,10 +35,10 @@ export default function DocumentPrint() {
   return (
     <div className="print-page">
       <div className="print-toolbar no-print">
-        <Link className="btn" to="/">
-          ← 一覧
+        <Link className="btn" to={listPath(type)}>
+          ← {DOC_TYPES[type].label}一覧
         </Link>
-        <Link className="btn" to={`/documents/${doc.id}`}>
+        <Link className="btn" to={editPath(doc.type, doc.id)}>
           編集
         </Link>
         <button className="btn btn-primary" onClick={() => window.print()}>

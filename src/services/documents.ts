@@ -4,17 +4,16 @@ import {
   doc,
   getDoc,
   getDocs,
-  limit,
-  orderBy,
   query,
   runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DOC_TYPES } from '../lib/docTypes';
-import type { DocStatus, DocType, DocumentData, StoredDocument } from '../types';
+import type { DocType, DocumentData, StoredDocument } from '../types';
 
 const col = () => collection(db, 'documents');
 
@@ -28,6 +27,8 @@ export function normalizeDocument(raw: Partial<DocumentData>): DocumentData {
     // 源泉徴収は対応する種別（発注書）のみ有効
     withholdingEnabled: Boolean(d.withholdingEnabled) && Boolean(DOC_TYPES[d.type]?.supportsWithholding),
     withholdingBaseMode: d.withholdingBaseMode ?? 'net',
+    paidDate: d.paidDate ?? '',
+    withholdingPaidDate: d.withholdingPaidDate ?? '',
     totals: {
       subtotal: d.totals?.subtotal ?? 0,
       tax: d.totals?.tax ?? 0,
@@ -57,9 +58,12 @@ export async function nextDocumentNumber(type: DocType, prefix: string, issueDat
   return `${head}${year}-${String(seq).padStart(4, '0')}`;
 }
 
-export async function listDocuments(max = 1000): Promise<StoredDocument[]> {
-  const snap = await getDocs(query(col(), orderBy('updatedAt', 'desc'), limit(max)));
-  return snap.docs.map((d) => ({ ...normalizeDocument(d.data() as DocumentData), id: d.id }));
+/** 種別ごとの一覧（発行日の新しい順）。単一項目の条件のみなので複合インデックスは不要 */
+export async function listDocumentsByType(type: DocType): Promise<StoredDocument[]> {
+  const snap = await getDocs(query(col(), where('type', '==', type)));
+  return snap.docs
+    .map((d) => ({ ...normalizeDocument(d.data() as DocumentData), id: d.id }))
+    .sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number));
 }
 
 export async function getDocument(id: string): Promise<StoredDocument | null> {
@@ -79,8 +83,11 @@ export async function updateDocument(id: string, data: DocumentData): Promise<vo
   await updateDoc(doc(db, 'documents', id), { ...rest, updatedAt: serverTimestamp() });
 }
 
-export async function updateStatus(id: string, status: DocStatus, email: string): Promise<void> {
-  await updateDoc(doc(db, 'documents', id), { status, updatedBy: email, updatedAt: serverTimestamp() });
+export type DocumentPatch = Partial<Pick<DocumentData, 'status' | 'paidDate' | 'withholdingPaidDate'>>;
+
+/** 状態・入金日・支払日など一部の項目だけを更新する */
+export async function patchDocument(id: string, patch: DocumentPatch, email: string): Promise<void> {
+  await updateDoc(doc(db, 'documents', id), { ...patch, updatedBy: email, updatedAt: serverTimestamp() });
 }
 
 export async function deleteDocument(id: string): Promise<void> {
