@@ -1,6 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { allowedDomain, auth } from '../firebase';
+import { listPath } from '../lib/docTypes';
 import { isInvited } from '../services/members';
 
 interface AuthState {
@@ -25,9 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isDomainUser, setIsDomainUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
+  /** 最初の認証状態の通知（ページ読み込み時のログイン状態の復元）が済んだか */
+  const initialized = useRef(false);
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
+      const isRestore = !initialized.current;
+      initialized.current = true;
       if (!u) {
         setUser(null);
         setIsDomainUser(false);
@@ -46,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setIsDomainUser(false);
       } else {
+        // ログインした直後は、開いていたページに関係なく請求書一覧を表示する
+        // （ページの再読み込みでログイン状態が復元された場合は、今のページのまま）
+        if (!isRestore) navigate(listPath('invoice'), { replace: true });
         setUser(u);
         setIsDomainUser(domain);
       }
