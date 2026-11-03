@@ -71,8 +71,10 @@ export interface DocumentData {
   totals: Totals;
   /** 請求書: お支払期限 */
   dueDate: string;
-  /** 請求書: 振込先 */
+  /** 請求書: 振込先（記載する内容。発行時点の内容を保存する） */
   bankInfo: string;
+  /** 請求書: 選んだ振込先の ID（'' = 記載しない / 'custom' = 自社設定に無い保存済みの内容） */
+  bankAccountId: string;
   /** 発注書 / 納品書: 納期・納品日 */
   deliveryDate: string;
   /** 発注書: 納品場所 */
@@ -119,6 +121,15 @@ export interface Client {
   transferNames: string;
 }
 
+/** 自社の振込先 */
+export interface BankAccount {
+  id: string;
+  /** 選択肢に表示する名称（例: 三井住友銀行） */
+  label: string;
+  /** 請求書に記載する内容（銀行名・支店・口座番号・名義） */
+  text: string;
+}
+
 export interface CompanySettings {
   name: string;
   postalCode: string;
@@ -129,7 +140,12 @@ export interface CompanySettings {
   representative: string;
   /** 適格請求書発行事業者 登録番号（T + 13桁） */
   registrationNumber: string;
-  bankInfo: string;
+  /** 振込先（複数登録可） */
+  bankAccounts: BankAccount[];
+  /** 請求書作成時に最初から選ばれる振込先 */
+  defaultBankAccountId: string;
+  /** 旧形式の振込先（1件のみ）。読み込み時に bankAccounts へ移す */
+  bankInfo?: string;
   /** 社印画像（data URL） */
   stampImage: string;
   defaultTaxMode: TaxMode;

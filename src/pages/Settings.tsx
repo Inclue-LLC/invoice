@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { MAX_BANK_ACCOUNTS, bankAccountLabel, defaultBankAccount, newBankAccountId } from '../lib/bankAccounts';
 import { DOC_TYPES, DOC_TYPE_ORDER } from '../lib/docTypes';
 import { isValidRegistrationNumber } from '../lib/format';
-import type { CompanySettings, DocType } from '../types';
+import type { BankAccount, CompanySettings, DocType } from '../types';
 
 /** 画像を最大 maxPx 四方に縮小し PNG の data URL にする（Firestore の1MB制限対策） */
 function resizeImage(file: File, maxPx = 240): Promise<string> {
@@ -41,15 +42,32 @@ export default function Settings() {
   const setPrefix = (t: DocType, v: string) => setForm((f) => ({ ...f, prefixes: { ...f.prefixes, [t]: v } }));
   const setNote = (t: DocType, v: string) => setForm((f) => ({ ...f, defaultNotes: { ...f.defaultNotes, [t]: v } }));
 
+  const setAccount = (id: string, patch: Partial<BankAccount>) =>
+    setForm((f) => ({ ...f, bankAccounts: f.bankAccounts.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));
+  const addAccount = () =>
+    setForm((f) => ({ ...f, bankAccounts: [...f.bankAccounts, { id: newBankAccountId(), label: '', text: '' }] }));
+  const removeAccount = (id: string) =>
+    setForm((f) => {
+      const bankAccounts = f.bankAccounts.filter((a) => a.id !== id);
+      return {
+        ...f,
+        bankAccounts,
+        defaultBankAccountId: f.defaultBankAccountId === id ? bankAccounts[0]?.id ?? '' : f.defaultBankAccountId,
+      };
+    });
+
   const regInvalid = form.registrationNumber !== '' && !isValidRegistrationNumber(form.registrationNumber);
 
   const submit = async () => {
     setMessage('');
     setError('');
     if (regInvalid) return setError('登録番号は「T」+13桁の数字で入力してください');
+    // 既定の振込先が未入力なら、入力済みの最初の振込先を既定にする
+    const def = defaultBankAccount(form);
+    const toSave = def ? { ...form, defaultBankAccountId: def.id } : form;
     setSaving(true);
     try {
-      await save(form);
+      await save(toSave);
       setMessage('保存しました');
     } catch (e) {
       setError(`保存に失敗しました: ${String(e)}`);
@@ -139,15 +157,51 @@ export default function Settings() {
       <section className="card">
         <h3>請求書の初期値</h3>
         <div className="grid">
-          <label className="span-2">
-            お振込先
-            <textarea
-              rows={3}
-              value={form.bankInfo}
-              placeholder={'○○銀行 △△支店 普通 1234567\n口座名義 カ）インクルー'}
-              onChange={(e) => set('bankInfo', e.target.value)}
-            />
-          </label>
+          <div className="span-2 bank-accounts">
+            <div className="bank-accounts-head">
+              <span>お振込先</span>
+              <span className="muted small">請求書の作成時に選べます。「既定」にした振込先が最初から選ばれます。</span>
+            </div>
+            {form.bankAccounts.map((a, i) => (
+              <div className="bank-account" key={a.id}>
+                <div className="bank-account-top">
+                  <label className="radio">
+                    <input
+                      type="radio"
+                      name="defaultBank"
+                      checked={form.defaultBankAccountId === a.id}
+                      onChange={() => set('defaultBankAccountId', a.id)}
+                    />
+                    既定
+                  </label>
+                  <input
+                    className="bank-label"
+                    value={a.label}
+                    placeholder={`名称（例: 三井住友銀行）※空欄なら「振込先${i + 1}」`}
+                    onChange={(e) => setAccount(a.id, { label: e.target.value })}
+                    aria-label={`振込先${i + 1}の名称`}
+                  />
+                  {form.bankAccounts.length > 1 && (
+                    <button type="button" className="btn btn-sm btn-danger" onClick={() => removeAccount(a.id)}>
+                      削除
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  rows={4}
+                  value={a.text}
+                  aria-label={`${bankAccountLabel(a, i)}の内容`}
+                  placeholder={'○○銀行 △△支店（123）\n普通 1234567\n口座名義 ゴウドウガイシャインクルー'}
+                  onChange={(e) => setAccount(a.id, { text: e.target.value })}
+                />
+              </div>
+            ))}
+            {form.bankAccounts.length < MAX_BANK_ACCOUNTS && (
+              <button type="button" className="btn btn-sm" onClick={addAccount}>
+                ＋ 振込先を追加
+              </button>
+            )}
+          </div>
           <label>
             お支払期限
             <select value={form.invoiceDueDays} onChange={(e) => set('invoiceDueDays', Number(e.target.value))}>

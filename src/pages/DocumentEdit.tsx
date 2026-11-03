@@ -4,6 +4,12 @@ import DocumentPreview from '../components/DocumentPreview';
 import ItemsEditor from '../components/ItemsEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
+import {
+  CUSTOM_BANK_ACCOUNT_ID,
+  bankAccountLabel,
+  defaultBankAccount,
+  usableBankAccounts,
+} from '../lib/bankAccounts';
 import { calcTotals, newItem } from '../lib/calc';
 import {
   CLIENT_TYPE_LABELS,
@@ -21,6 +27,8 @@ import type { Client, ClientType, CompanySettings, DocType, DocumentData, Honori
 
 function blankDocument(type: DocType, s: CompanySettings, email: string): DocumentData {
   const issueDate = todayIso();
+  // 請求書には既定の振込先を最初から入れておく
+  const bank = type === 'invoice' ? defaultBankAccount(s) : null;
   return {
     type,
     number: '',
@@ -42,7 +50,8 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     withholdingBaseMode: 'net',
     totals: { subtotal: 0, tax: 0, total: 0, byRate: [], withholdingBase: 0, withholdingTax: 0, payable: 0 },
     dueDate: type === 'invoice' ? calcDueDate(issueDate, s.invoiceDueDays) : '',
-    bankInfo: type === 'invoice' ? s.bankInfo : '',
+    bankInfo: bank?.text ?? '',
+    bankAccountId: bank?.id ?? '',
     deliveryDate: type === 'delivery_note' ? issueDate : '',
     deliveryPlace: '',
     paymentTerms: '',
@@ -80,9 +89,16 @@ function deriveDocument(src: DocumentData, srcId: string, type: DocType, s: Comp
     paymentTerms: src.paymentTerms ?? '',
     receiptPurpose: type === 'receipt' ? src.receiptPurpose || src.subject || 'お品代' : '',
     paymentMethod: src.paymentMethod || base.paymentMethod,
-    bankInfo: same ? src.bankInfo : base.bankInfo,
+    // コピー時は同じ振込先を選ぶ（自社設定の内容が変わっていれば最新の内容にする）
+    ...(same && src.bankAccountId ? copyBank(src, s) : {}),
     sourceDocId: srcId,
   };
+}
+
+function copyBank(src: DocumentData, s: CompanySettings): Pick<DocumentData, 'bankInfo' | 'bankAccountId'> {
+  const acc = usableBankAccounts(s).find((a) => a.id === src.bankAccountId);
+  if (acc) return { bankAccountId: acc.id, bankInfo: acc.text };
+  return { bankAccountId: src.bankInfo ? CUSTOM_BANK_ACCOUNT_ID : '', bankInfo: src.bankInfo };
 }
 
 export default function DocumentEdit({ type: routeType }: { type: DocType }) {
@@ -171,6 +187,20 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
 
   const changeClientType = (t: ClientType) =>
     setDoc((d) => (d ? { ...d, clientType: t, clientHonorific: t === 'individual' ? '様' : '御中' } : d));
+
+  const bankAccounts = usableBankAccounts(settings);
+  const defaultBank = defaultBankAccount(settings);
+  const bankSelectValue =
+    doc.bankAccountId && (doc.bankAccountId === CUSTOM_BANK_ACCOUNT_ID || bankAccounts.some((a) => a.id === doc.bankAccountId))
+      ? doc.bankAccountId
+      : doc.bankInfo
+        ? CUSTOM_BANK_ACCOUNT_ID
+        : '';
+  const selectBank = (accId: string) => {
+    if (accId === CUSTOM_BANK_ACCOUNT_ID) return;
+    const acc = bankAccounts.find((a) => a.id === accId);
+    setDoc((d) => (d ? { ...d, bankAccountId: acc?.id ?? '', bankInfo: acc?.text ?? '' } : d));
+  };
 
   const changeIssueDate = (v: string) => {
     setDoc((d) => {
@@ -500,10 +530,30 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
             <h3>その他</h3>
             <div className="grid">
               {doc.type === 'invoice' && (
-                <label className="span-2">
-                  お振込先
-                  <textarea rows={3} value={doc.bankInfo} onChange={(e) => set('bankInfo', e.target.value)} />
-                </label>
+                <div className="span-2 bank-field">
+                  <label>
+                    お振込先
+                    <select value={bankSelectValue} onChange={(e) => selectBank(e.target.value)}>
+                      {bankAccounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {bankAccountLabel(a, settings.bankAccounts.indexOf(a))}
+                          {a.id === defaultBank?.id ? '（既定）' : ''}
+                        </option>
+                      ))}
+                      {bankSelectValue === CUSTOM_BANK_ACCOUNT_ID && (
+                        <option value={CUSTOM_BANK_ACCOUNT_ID}>この請求書に保存されている振込先</option>
+                      )}
+                      <option value="">振込先を記載しない</option>
+                    </select>
+                  </label>
+                  {doc.bankInfo ? (
+                    <div className="bank-preview pv-pre">{doc.bankInfo}</div>
+                  ) : bankAccounts.length === 0 ? (
+                    <div className="hint">
+                      振込先が登録されていません。<Link to="/settings">自社設定</Link>で登録してください。
+                    </div>
+                  ) : null}
+                </div>
               )}
               <label className="span-2">
                 備考

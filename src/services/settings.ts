@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DOC_TYPES } from '../lib/docTypes';
-import type { CompanySettings } from '../types';
+import type { BankAccount, CompanySettings } from '../types';
 
 const ref = () => doc(db, 'settings', 'company');
 
@@ -14,7 +14,11 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   email: '',
   representative: '',
   registrationNumber: '',
-  bankInfo: '',
+  bankAccounts: [
+    { id: 'acc1', label: '', text: '' },
+    { id: 'acc2', label: '', text: '' },
+  ],
+  defaultBankAccountId: 'acc1',
   stampImage: '',
   defaultTaxMode: 'exclusive',
   defaultRounding: 'floor',
@@ -36,14 +40,29 @@ export const DEFAULT_SETTINGS: CompanySettings = {
 export async function loadSettings(): Promise<CompanySettings> {
   const snap = await getDoc(ref());
   const data = (snap.exists() ? snap.data() : {}) as Partial<CompanySettings>;
+  // 旧形式（振込先1件の bankInfo）からの移行。入力欄は最低2つ用意する
+  let bankAccounts: BankAccount[] = data.bankAccounts?.length
+    ? data.bankAccounts
+    : [{ id: 'acc1', label: '', text: data.bankInfo ?? '' }];
+  if (bankAccounts.length < 2) bankAccounts = [...bankAccounts, { id: 'acc2', label: '', text: '' }];
+  const { bankInfo: _legacy, ...rest } = data;
+  void _legacy;
   return {
     ...DEFAULT_SETTINGS,
-    ...data,
+    ...rest,
+    bankAccounts,
+    defaultBankAccountId:
+      data.defaultBankAccountId && bankAccounts.some((a) => a.id === data.defaultBankAccountId)
+        ? data.defaultBankAccountId
+        : bankAccounts[0].id,
     prefixes: { ...DEFAULT_SETTINGS.prefixes, ...(data.prefixes ?? {}) },
     defaultNotes: { ...DEFAULT_SETTINGS.defaultNotes, ...(data.defaultNotes ?? {}) },
   };
 }
 
 export async function saveSettings(s: CompanySettings): Promise<void> {
-  await setDoc(ref(), s);
+  // 旧形式の項目は保存しない
+  const { bankInfo: _legacy, ...rest } = s;
+  void _legacy;
+  await setDoc(ref(), rest);
 }

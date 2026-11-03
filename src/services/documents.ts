@@ -30,6 +30,9 @@ export function normalizeDocument(raw: Partial<DocumentData>): DocumentData {
     paidDate: d.paidDate ?? '',
     withholdingPaidDate: d.withholdingPaidDate ?? '',
     paymentMemo: d.paymentMemo ?? '',
+    bankInfo: d.bankInfo ?? '',
+    // 振込先の選択機能より前の請求書は、保存されている内容をそのまま使う
+    bankAccountId: d.bankAccountId ?? (d.bankInfo ? 'custom' : ''),
     totals: {
       subtotal: d.totals?.subtotal ?? 0,
       tax: d.totals?.tax ?? 0,
