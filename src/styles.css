@@ -75,6 +75,9 @@ textarea { resize: vertical; }
 .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .grid label, .stamp-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 .span-2 { grid-column: span 2; }
+.grid label.checkbox { flex-direction: row; align-items: center; gap: 8px; color: var(--text); font-size: 14px; cursor: pointer; }
+.grid label.checkbox input, input.inline-check { width: 16px; height: 16px; flex: none; }
+.hint { font-size: 12px; color: var(--muted); background: #f6f8fa; border-radius: 6px; padding: 8px 10px; align-self: end; }
 
 .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .filters select, .filters input { width: auto; }
@@ -97,6 +100,9 @@ textarea { resize: vertical; }
 .badge-purchase_order { background: #fbefff; color: #8250df; }
 .badge-delivery_note { background: #dafbe1; color: #116329; }
 .badge-receipt { background: #fff1e5; color: #bc4c00; }
+.badge-corporate { background: #eef1f4; color: #424a53; }
+.badge-individual { background: #fff8c5; color: #7d4e00; }
+.badge-withholding { background: #ffebe9; color: #a40e26; margin-left: 4px; }
 select.status { width: auto; padding: 2px 6px; font-size: 12px; }
 .status-draft { background: #f6f8fa; }
 .status-issued { background: #ddf4ff; }
@@ -184,6 +190,7 @@ select.status { width: auto; padding: 2px 6px; font-size: 12px; }
 .sheet:has(.pv-receipt-amount) { min-height: 148mm; }
 .pv-receipt-amount { display: flex; align-items: baseline; justify-content: center; gap: 6mm; background: #f1f3f6; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 3mm; margin: 6mm 10mm 4mm; }
 .pv-receipt-amount .pv-value { font-size: 22pt; font-weight: 700; letter-spacing: .05em; }
+.pv-receipt-withholding { text-align: center; font-size: 9pt; margin: -2mm 0 3mm; }
 .pv-receipt-purpose { text-align: center; font-size: 11pt; margin-bottom: 2mm; }
 .sheet:has(.pv-receipt-amount) .pv-lead { text-align: center; }
 .sheet:has(.pv-receipt-amount) .pv-recipient { margin-top: 4mm; }

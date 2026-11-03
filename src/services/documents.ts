@@ -17,6 +17,27 @@ import type { DocStatus, DocType, DocumentData, StoredDocument } from '../types'
 
 const col = () => collection(db, 'documents');
 
+/** 項目追加前に保存された帳票にも新しい項目の初期値を補う */
+export function normalizeDocument(raw: Partial<DocumentData>): DocumentData {
+  const d = raw as DocumentData;
+  const total = d.totals?.total ?? 0;
+  return {
+    ...d,
+    clientType: d.clientType ?? 'corporate',
+    withholdingEnabled: d.withholdingEnabled ?? false,
+    withholdingBaseMode: d.withholdingBaseMode ?? 'net',
+    totals: {
+      subtotal: d.totals?.subtotal ?? 0,
+      tax: d.totals?.tax ?? 0,
+      byRate: d.totals?.byRate ?? [],
+      total,
+      withholdingBase: d.totals?.withholdingBase ?? 0,
+      withholdingTax: d.totals?.withholdingTax ?? 0,
+      payable: d.totals?.payable ?? total,
+    },
+  };
+}
+
 /**
  * 帳票番号を採番する（例: INV-2026-0001）。
  * Firestore のトランザクションで年・種別ごとの連番を払い出すため、同時発行でも重複しない。
@@ -36,12 +57,12 @@ export async function nextDocumentNumber(type: DocType, prefix: string, issueDat
 
 export async function listDocuments(max = 1000): Promise<StoredDocument[]> {
   const snap = await getDocs(query(col(), orderBy('updatedAt', 'desc'), limit(max)));
-  return snap.docs.map((d) => ({ ...(d.data() as DocumentData), id: d.id }));
+  return snap.docs.map((d) => ({ ...normalizeDocument(d.data() as DocumentData), id: d.id }));
 }
 
 export async function getDocument(id: string): Promise<StoredDocument | null> {
   const snap = await getDoc(doc(db, 'documents', id));
-  return snap.exists() ? { ...(snap.data() as DocumentData), id: snap.id } : null;
+  return snap.exists() ? { ...normalizeDocument(snap.data() as DocumentData), id: snap.id } : null;
 }
 
 export async function createDocument(data: DocumentData): Promise<string> {

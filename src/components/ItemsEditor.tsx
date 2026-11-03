@@ -5,12 +5,14 @@ import type { LineItem, Rounding, TaxRate } from '../types';
 interface Props {
   items: LineItem[];
   rounding: Rounding;
+  /** 明細ごとの源泉徴収対象チェックを表示する */
+  showWithholding?: boolean;
   onChange: (items: LineItem[]) => void;
 }
 
 const UNITS = ['式', '個', '件', '台', '本', '枚', '時間', '人月', '月', '回', 'kg', 'm'];
 
-export default function ItemsEditor({ items, rounding, onChange }: Props) {
+export default function ItemsEditor({ items, rounding, showWithholding = false, onChange }: Props) {
   const update = (id: string, patch: Partial<LineItem>) =>
     onChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
@@ -39,6 +41,11 @@ export default function ItemsEditor({ items, rounding, onChange }: Props) {
             <th style={{ width: 80 }}>単位</th>
             <th style={{ width: 120 }}>単価</th>
             <th style={{ width: 100 }}>税率</th>
+            {showWithholding && (
+              <th style={{ width: 50 }} className="center">
+                源泉
+              </th>
+            )}
             <th style={{ width: 110 }} className="num">
               金額
             </th>
@@ -80,6 +87,17 @@ export default function ItemsEditor({ items, rounding, onChange }: Props) {
                   <option value={0}>対象外</option>
                 </select>
               </td>
+              {showWithholding && (
+                <td className="center" data-label="源泉">
+                  <input
+                    type="checkbox"
+                    className="inline-check"
+                    title="源泉徴収の対象"
+                    checked={it.withholding !== false}
+                    onChange={(e) => update(it.id, { withholding: e.target.checked })}
+                  />
+                </td>
+              )}
               <td className="num" data-label="金額">
                 {formatNumber(lineAmount(it, rounding))}
               </td>

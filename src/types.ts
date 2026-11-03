@@ -5,6 +5,10 @@ export type TaxRate = 10 | 8 | 0;
 export type TaxMode = 'exclusive' | 'inclusive';
 export type Rounding = 'floor' | 'round' | 'ceil';
 export type Honorific = '御中' | '様' | '';
+/** 取引先区分 */
+export type ClientType = 'corporate' | 'individual';
+/** 源泉徴収の対象額: net = 税抜金額 / gross = 税込金額 */
+export type WithholdingBaseMode = 'net' | 'gross';
 
 export interface LineItem {
   id: string;
@@ -13,6 +17,13 @@ export interface LineItem {
   unit: string;
   unitPrice: number;
   taxRate: TaxRate;
+  /** 源泉徴収の対象とするか（未設定は対象） */
+  withholding?: boolean;
+}
+
+export interface WithholdingOptions {
+  enabled: boolean;
+  baseMode: WithholdingBaseMode;
 }
 
 export interface RateBreakdown {
@@ -30,6 +41,12 @@ export interface Totals {
   tax: number;
   total: number;
   byRate: RateBreakdown[];
+  /** 源泉徴収の対象額 */
+  withholdingBase: number;
+  /** 源泉徴収税額（所得税及び復興特別所得税） */
+  withholdingTax: number;
+  /** 差引支払額（合計 − 源泉徴収税額） */
+  payable: number;
 }
 
 export interface DocumentData {
@@ -38,6 +55,7 @@ export interface DocumentData {
   status: DocStatus;
   issueDate: string; // YYYY-MM-DD
   clientId: string | null;
+  clientType: ClientType;
   clientName: string;
   clientHonorific: Honorific;
   clientPostalCode: string;
@@ -47,6 +65,9 @@ export interface DocumentData {
   notes: string;
   taxMode: TaxMode;
   rounding: Rounding;
+  /** 源泉徴収税を差し引くか */
+  withholdingEnabled: boolean;
+  withholdingBaseMode: WithholdingBaseMode;
   totals: Totals;
   /** 請求書: お支払期限 */
   dueDate: string;
@@ -76,6 +97,7 @@ export interface StoredDocument extends DocumentData {
 
 export interface Client {
   id: string;
+  type: ClientType;
   name: string;
   honorific: Honorific;
   postalCode: string;
@@ -85,6 +107,8 @@ export interface Client {
   tel: string;
   email: string;
   memo: string;
+  /** 源泉徴収の対象（個人への報酬・料金など） */
+  withholding: boolean;
 }
 
 export interface CompanySettings {

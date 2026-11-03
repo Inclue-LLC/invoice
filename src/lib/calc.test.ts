@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calcTotals, lineAmount, roundBy } from './calc';
+import { calcTotals, calcWithholdingTax, lineAmount, roundBy } from './calc';
 import { calcDueDate, formatDateJa, isValidRegistrationNumber } from './format';
 import type { LineItem } from '../types';
 
@@ -59,7 +59,72 @@ describe('calcTotals', () => {
   });
 
   it('明細なし', () => {
-    expect(calcTotals([], 'exclusive', 'floor')).toEqual({ subtotal: 0, tax: 0, total: 0, byRate: [] });
+    expect(calcTotals([], 'exclusive', 'floor')).toEqual({
+      subtotal: 0,
+      tax: 0,
+      total: 0,
+      byRate: [],
+      withholdingBase: 0,
+      withholdingTax: 0,
+      payable: 0,
+    });
+  });
+});
+
+describe('calcWithholdingTax', () => {
+  it('100万円以下は10.21%（1円未満切り捨て）', () => {
+    expect(calcWithholdingTax(100000)).toBe(10210);
+    expect(calcWithholdingTax(33333)).toBe(3403);
+    expect(calcWithholdingTax(1_000_000)).toBe(102100);
+  });
+  it('100万円超の部分は20.42%', () => {
+    expect(calcWithholdingTax(1_500_000)).toBe(204200);
+    expect(calcWithholdingTax(1_000_001)).toBe(102100);
+    expect(calcWithholdingTax(1_000_005)).toBe(102101);
+  });
+  it('0以下は0', () => {
+    expect(calcWithholdingTax(0)).toBe(0);
+    expect(calcWithholdingTax(-100)).toBe(0);
+  });
+});
+
+describe('calcTotals（源泉徴収）', () => {
+  it('外税・税抜金額を対象', () => {
+    const t = calcTotals([item(1, 100000)], 'exclusive', 'floor', { enabled: true, baseMode: 'net' });
+    expect(t.total).toBe(110000);
+    expect(t.withholdingBase).toBe(100000);
+    expect(t.withholdingTax).toBe(10210);
+    expect(t.payable).toBe(99790);
+  });
+
+  it('外税・税込金額を対象', () => {
+    const t = calcTotals([item(1, 100000)], 'exclusive', 'floor', { enabled: true, baseMode: 'gross' });
+    expect(t.withholdingBase).toBe(110000);
+    expect(t.withholdingTax).toBe(11231);
+    expect(t.payable).toBe(98769);
+  });
+
+  it('内税・税抜金額を対象', () => {
+    const t = calcTotals([item(1, 110000)], 'inclusive', 'floor', { enabled: true, baseMode: 'net' });
+    expect(t.withholdingBase).toBe(100000);
+    expect(t.withholdingTax).toBe(10210);
+    expect(t.payable).toBe(99790);
+  });
+
+  it('対象外の明細（交通費など）は除外する', () => {
+    const fee = item(1, 200000);
+    const travel = { ...item(1, 5000), withholding: false };
+    const t = calcTotals([fee, travel], 'exclusive', 'floor', { enabled: true, baseMode: 'net' });
+    expect(t.total).toBe(225500);
+    expect(t.withholdingBase).toBe(200000);
+    expect(t.withholdingTax).toBe(20420);
+    expect(t.payable).toBe(205080);
+  });
+
+  it('無効なら差し引かない', () => {
+    const t = calcTotals([item(1, 100000)], 'exclusive', 'floor', { enabled: false, baseMode: 'net' });
+    expect(t.withholdingTax).toBe(0);
+    expect(t.payable).toBe(110000);
   });
 });
 

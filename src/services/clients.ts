@@ -7,6 +7,7 @@ const col = () => collection(db, 'clients');
 export type ClientInput = Omit<Client, 'id'>;
 
 export const EMPTY_CLIENT: ClientInput = {
+  type: 'corporate',
   name: '',
   honorific: '御中',
   postalCode: '',
@@ -16,6 +17,7 @@ export const EMPTY_CLIENT: ClientInput = {
   tel: '',
   email: '',
   memo: '',
+  withholding: false,
 };
 
 export async function listClients(): Promise<Client[]> {

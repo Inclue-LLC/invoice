@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { EMPTY_CLIENT, createClient, deleteClient, listClients, updateClient, type ClientInput } from '../services/clients';
-import type { Client, Honorific } from '../types';
+import { CLIENT_TYPE_LABELS } from '../lib/docTypes';
+import type { Client, ClientType, Honorific } from '../types';
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -61,9 +62,31 @@ export default function Clients() {
         <section className="card">
           <h3>{editing.id ? '取引先の編集' : '取引先の追加'}</h3>
           <div className="grid">
-            <label className="span-2">
-              取引先名 *
-              <input value={editing.data.name} onChange={(e) => set('name', e.target.value)} placeholder="株式会社○○" />
+            <label>
+              区分
+              <select
+                value={editing.data.type}
+                onChange={(e) => {
+                  const t = e.target.value as ClientType;
+                  setEditing((ed) =>
+                    ed ? { ...ed, data: { ...ed.data, type: t, honorific: t === 'individual' ? '様' : '御中' } } : ed,
+                  );
+                }}
+              >
+                {(Object.keys(CLIENT_TYPE_LABELS) as ClientType[]).map((t) => (
+                  <option key={t} value={t}>
+                    {CLIENT_TYPE_LABELS[t]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {editing.data.type === 'individual' ? '氏名（屋号）' : '取引先名'} *
+              <input
+                value={editing.data.name}
+                onChange={(e) => set('name', e.target.value)}
+                placeholder={editing.data.type === 'individual' ? '山田 太郎' : '株式会社○○'}
+              />
             </label>
             <label>
               敬称
@@ -97,6 +120,14 @@ export default function Clients() {
               メール
               <input type="email" value={editing.data.email} onChange={(e) => set('email', e.target.value)} />
             </label>
+            <label className="checkbox span-2">
+              <input
+                type="checkbox"
+                checked={editing.data.withholding}
+                onChange={(e) => set('withholding', e.target.checked)}
+              />
+              源泉徴収の対象（この取引先を選んだ請求書・発注書・領収書で、源泉徴収を自動でオンにします）
+            </label>
             <label className="span-2">
               メモ
               <textarea rows={2} value={editing.data.memo} onChange={(e) => set('memo', e.target.value)} />
@@ -122,6 +153,7 @@ export default function Clients() {
           <table className="table">
             <thead>
               <tr>
+                <th>区分</th>
                 <th>取引先名</th>
                 <th>部署・担当</th>
                 <th>住所</th>
@@ -132,6 +164,10 @@ export default function Clients() {
             <tbody>
               {shown.map((c) => (
                 <tr key={c.id}>
+                  <td>
+                    <span className={`badge badge-${c.type}`}>{CLIENT_TYPE_LABELS[c.type]}</span>
+                    {c.withholding && <span className="badge badge-withholding">源泉</span>}
+                  </td>
                   <td>
                     {c.name} {c.honorific}
                   </td>

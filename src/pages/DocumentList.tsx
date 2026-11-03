@@ -126,7 +126,12 @@ export default function DocumentList() {
                   <td>{formatDateJa(d.issueDate)}</td>
                   <td>{d.clientName}</td>
                   <td className="ellipsis">{d.subject}</td>
-                  <td className="num">{formatYen(d.totals?.total ?? 0)}</td>
+                  <td className="num">
+                    {formatYen(d.totals.total)}
+                    {d.withholdingEnabled && (
+                      <div className="muted small">差引 {formatYen(d.totals.payable)}</div>
+                    )}
+                  </td>
                   <td>
                     <select
                       className={`status status-${d.status}`}

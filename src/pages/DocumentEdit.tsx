@@ -5,11 +5,11 @@ import ItemsEditor from '../components/ItemsEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { calcTotals, newItem } from '../lib/calc';
-import { DOC_TYPES, DOC_TYPE_ORDER, STATUS_LABELS, isDocType } from '../lib/docTypes';
+import { CLIENT_TYPE_LABELS, DOC_TYPES, DOC_TYPE_ORDER, STATUS_LABELS, isDocType } from '../lib/docTypes';
 import { calcDueDate, todayIso } from '../lib/format';
 import { listClients } from '../services/clients';
 import { createDocument, getDocument, nextDocumentNumber, updateDocument } from '../services/documents';
-import type { Client, CompanySettings, DocStatus, DocType, DocumentData, Honorific } from '../types';
+import type { Client, ClientType, CompanySettings, DocStatus, DocType, DocumentData, Honorific } from '../types';
 
 function blankDocument(type: DocType, s: CompanySettings, email: string): DocumentData {
   const issueDate = todayIso();
@@ -19,6 +19,7 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     status: 'draft',
     issueDate,
     clientId: null,
+    clientType: 'corporate',
     clientName: '',
     clientHonorific: '御中',
     clientPostalCode: '',
@@ -28,7 +29,9 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     notes: s.defaultNotes[type] ?? '',
     taxMode: s.defaultTaxMode,
     rounding: s.defaultRounding,
-    totals: { subtotal: 0, tax: 0, total: 0, byRate: [] },
+    withholdingEnabled: false,
+    withholdingBaseMode: 'net',
+    totals: { subtotal: 0, tax: 0, total: 0, byRate: [], withholdingBase: 0, withholdingTax: 0, payable: 0 },
     dueDate: type === 'invoice' ? calcDueDate(issueDate, s.invoiceDueDays) : '',
     bankInfo: type === 'invoice' ? s.bankInfo : '',
     deliveryDate: type === 'delivery_note' ? issueDate : '',
@@ -48,6 +51,7 @@ function deriveDocument(src: DocumentData, srcId: string, type: DocType, s: Comp
   return {
     ...base,
     clientId: src.clientId,
+    clientType: src.clientType,
     clientName: src.clientName,
     clientHonorific: src.clientHonorific,
     clientPostalCode: src.clientPostalCode,
@@ -57,6 +61,8 @@ function deriveDocument(src: DocumentData, srcId: string, type: DocType, s: Comp
     notes: src.type === type ? src.notes : base.notes,
     taxMode: src.taxMode,
     rounding: src.rounding,
+    withholdingEnabled: DOC_TYPES[type].supportsWithholding && src.withholdingEnabled,
+    withholdingBaseMode: src.withholdingBaseMode,
     deliveryPlace: src.deliveryPlace ?? '',
     paymentTerms: src.paymentTerms ?? '',
     receiptPurpose: type === 'receipt' ? src.receiptPurpose || src.subject || 'お品代' : '',
@@ -111,8 +117,14 @@ export default function DocumentEdit() {
   }, [id, qType, fromId, settingsLoading, settings, email]);
 
   const totals = useMemo(
-    () => (doc ? calcTotals(doc.items, doc.taxMode, doc.rounding) : null),
-    [doc?.items, doc?.taxMode, doc?.rounding],
+    () =>
+      doc
+        ? calcTotals(doc.items, doc.taxMode, doc.rounding, {
+            enabled: doc.withholdingEnabled,
+            baseMode: doc.withholdingBaseMode,
+          })
+        : null,
+    [doc?.items, doc?.taxMode, doc?.rounding, doc?.withholdingEnabled, doc?.withholdingBaseMode],
   );
 
   if (error) return <div className="page"><div className="alert alert-error">{error}</div></div>;
@@ -130,15 +142,20 @@ export default function DocumentEdit() {
           ? {
               ...d,
               clientId: c.id,
+              clientType: c.type,
               clientName: c.department ? `${c.name} ${c.department}` : c.name,
               clientHonorific: c.honorific,
               clientPostalCode: c.postalCode,
               clientAddress: c.address,
+              withholdingEnabled: DOC_TYPES[d.type].supportsWithholding && c.withholding,
             }
           : { ...d, clientId: null }
         : d,
     );
   };
+
+  const changeClientType = (t: ClientType) =>
+    setDoc((d) => (d ? { ...d, clientType: t, clientHonorific: t === 'individual' ? '様' : '御中' } : d));
 
   const changeIssueDate = (v: string) => {
     setDoc((d) => {
@@ -160,7 +177,10 @@ export default function DocumentEdit() {
       const data: DocumentData = {
         ...doc,
         items,
-        totals: calcTotals(items, doc.taxMode, doc.rounding),
+        totals: calcTotals(items, doc.taxMode, doc.rounding, {
+          enabled: doc.withholdingEnabled,
+          baseMode: doc.withholdingBaseMode,
+        }),
         updatedBy: email,
       };
       let docId = id;
@@ -286,8 +306,18 @@ export default function DocumentEdit() {
                   ))}
                 </select>
               </label>
-              <label className="span-2">
-                名称 *
+              <label>
+                区分
+                <select value={doc.clientType} onChange={(e) => changeClientType(e.target.value as ClientType)}>
+                  {(Object.keys(CLIENT_TYPE_LABELS) as ClientType[]).map((t) => (
+                    <option key={t} value={t}>
+                      {CLIENT_TYPE_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {doc.clientType === 'individual' ? '氏名（屋号）' : '名称'} *
                 <input value={doc.clientName} onChange={(e) => set('clientName', e.target.value)} />
               </label>
               <label>
@@ -390,14 +420,68 @@ export default function DocumentEdit() {
             </div>
           </section>
 
+          {info.supportsWithholding && (
+            <section className="card">
+              <h3>源泉徴収</h3>
+              <div className="grid">
+                <label className="checkbox span-2">
+                  <input
+                    type="checkbox"
+                    checked={doc.withholdingEnabled}
+                    onChange={(e) => set('withholdingEnabled', e.target.checked)}
+                  />
+                  源泉徴収税（所得税及び復興特別所得税）を差し引く
+                </label>
+                {doc.withholdingEnabled && (
+                  <>
+                    <label>
+                      対象額
+                      <select
+                        value={doc.withholdingBaseMode}
+                        onChange={(e) => set('withholdingBaseMode', e.target.value as DocumentData['withholdingBaseMode'])}
+                      >
+                        <option value="net">税抜金額（消費税を区分記載）</option>
+                        <option value="gross">税込金額</option>
+                      </select>
+                    </label>
+                    <div className="hint">
+                      税率: 100万円以下の部分 10.21%、100万円超の部分 20.42%（1円未満切り捨て）。
+                      <br />
+                      交通費など対象外の明細は、明細の「源泉」のチェックを外してください。
+                    </div>
+                  </>
+                )}
+                {!doc.withholdingEnabled && doc.clientType === 'individual' && (
+                  <div className="hint span-2">
+                    個人へのデザイン料・原稿料・講演料・翻訳料・士業への報酬などは源泉徴収の対象になる場合があります。
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
           <section className="card">
             <h3>明細</h3>
-            <ItemsEditor items={doc.items} rounding={doc.rounding} onChange={(items) => set('items', items)} />
+            <ItemsEditor
+              items={doc.items}
+              rounding={doc.rounding}
+              showWithholding={info.supportsWithholding && doc.withholdingEnabled}
+              onChange={(items) => set('items', items)}
+            />
             <div className="totals-inline">
               <span>小計 ¥{totals.subtotal.toLocaleString('ja-JP')}</span>
               <span>消費税 ¥{totals.tax.toLocaleString('ja-JP')}</span>
               <strong>合計 ¥{totals.total.toLocaleString('ja-JP')}</strong>
             </div>
+            {doc.withholdingEnabled && (
+              <div className="totals-inline">
+                <span>
+                  源泉徴収税（対象 ¥{totals.withholdingBase.toLocaleString('ja-JP')}） −¥
+                  {totals.withholdingTax.toLocaleString('ja-JP')}
+                </span>
+                <strong>差引支払額 ¥{totals.payable.toLocaleString('ja-JP')}</strong>
+              </div>
+            )}
           </section>
 
           <section className="card">

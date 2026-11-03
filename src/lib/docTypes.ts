@@ -9,6 +9,8 @@ export interface DocTypeInfo {
   /** 本文の定型文 */
   lead: string;
   defaultPrefix: string;
+  /** 源泉徴収税の差し引きに対応するか */
+  supportsWithholding: boolean;
 }
 
 export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
@@ -18,6 +20,7 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     amountLabel: 'ご請求金額',
     lead: '下記の通りご請求申し上げます。',
     defaultPrefix: 'INV',
+    supportsWithholding: true,
   },
   purchase_order: {
     label: '発注書',
@@ -25,6 +28,7 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     amountLabel: '発注金額',
     lead: '下記の通り発注いたします。',
     defaultPrefix: 'PO',
+    supportsWithholding: true,
   },
   delivery_note: {
     label: '納品書',
@@ -32,6 +36,7 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     amountLabel: '納品金額',
     lead: '下記の通り納品いたします。',
     defaultPrefix: 'DN',
+    supportsWithholding: false,
   },
   receipt: {
     label: '領収書',
@@ -39,8 +44,11 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     amountLabel: '金額',
     lead: '上記正に領収いたしました。',
     defaultPrefix: 'RCP',
+    supportsWithholding: true,
   },
 };
+
+export const CLIENT_TYPE_LABELS = { corporate: '法人', individual: '個人' } as const;
 
 export const DOC_TYPE_ORDER: DocType[] = ['invoice', 'purchase_order', 'delivery_note', 'receipt'];
 
