@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { DOC_TYPES, DOC_TYPE_ORDER, listPath } from '../lib/docTypes';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -7,7 +7,9 @@ export default function Layout() {
   return (
     <div className="app">
       <header className="app-header no-print">
-        <div className="brand">帳票発行ツール</div>
+        <Link className="brand" to="/sales" title="売上管理へ">
+          帳票発行ツール
+        </Link>
         <nav>
           <NavLink to="/sales">売上管理</NavLink>
           <span className="nav-sep" />

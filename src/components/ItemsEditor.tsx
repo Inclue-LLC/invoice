@@ -33,62 +33,77 @@ export default function ItemsEditor({ items, rounding, showWithholding = false, 
           <option key={u} value={u} />
         ))}
       </datalist>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>品名・内容</th>
-            <th style={{ width: 90 }}>数量</th>
-            <th style={{ width: 80 }}>単位</th>
-            <th style={{ width: 120 }}>単価</th>
-            <th style={{ width: 100 }}>税率</th>
-            {showWithholding && (
-              <th style={{ width: 50 }} className="center">
-                源泉
-              </th>
-            )}
-            <th style={{ width: 110 }} className="num">
-              金額
-            </th>
-            <th style={{ width: 100 }} />
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((it, idx) => (
-            <tr key={it.id}>
-              <td data-label="品名">
-                <input value={it.name} onChange={(e) => update(it.id, { name: e.target.value })} placeholder="品名" />
-              </td>
-              <td data-label="数量">
+      <div className="item-list">
+        {items.map((it, idx) => (
+          <div className="item-row" key={it.id}>
+            <div className="item-main">
+              <span className="item-no">{idx + 1}</span>
+              <label className="item-name">
+                <span className="item-label">品名・内容</span>
+                <textarea
+                  rows={Math.max(1, it.name.split('\n').length)}
+                  value={it.name}
+                  placeholder="品名・作業内容（改行できます）"
+                  onChange={(e) => update(it.id, { name: e.target.value })}
+                />
+              </label>
+              <div className="item-actions">
+                <button type="button" className="btn btn-icon" title="上へ" disabled={idx === 0} onClick={() => move(idx, -1)}>
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-icon"
+                  title="下へ"
+                  disabled={idx === items.length - 1}
+                  onClick={() => move(idx, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-icon btn-danger"
+                  title="この明細を削除"
+                  onClick={() => onChange(items.filter((i) => i.id !== it.id))}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className={`item-sub ${showWithholding ? 'with-wh' : ''}`}>
+              <label>
+                <span className="item-label">数量</span>
                 <input
                   type="number"
                   step="any"
                   value={Number.isFinite(it.quantity) ? it.quantity : ''}
                   onChange={(e) => update(it.id, { quantity: num(e.target.value) })}
                 />
-              </td>
-              <td data-label="単位">
+              </label>
+              <label>
+                <span className="item-label">単位</span>
                 <input list="unit-list" value={it.unit} onChange={(e) => update(it.id, { unit: e.target.value })} />
-              </td>
-              <td data-label="単価">
+              </label>
+              <label>
+                <span className="item-label">単価</span>
                 <input
                   type="number"
                   step="any"
                   value={Number.isFinite(it.unitPrice) ? it.unitPrice : ''}
                   onChange={(e) => update(it.id, { unitPrice: num(e.target.value) })}
                 />
-              </td>
-              <td data-label="税率">
-                <select
-                  value={it.taxRate}
-                  onChange={(e) => update(it.id, { taxRate: Number(e.target.value) as TaxRate })}
-                >
+              </label>
+              <label>
+                <span className="item-label">税率</span>
+                <select value={it.taxRate} onChange={(e) => update(it.id, { taxRate: Number(e.target.value) as TaxRate })}>
                   <option value={10}>10%</option>
                   <option value={8}>8%（軽減）</option>
                   <option value={0}>対象外</option>
                 </select>
-              </td>
+              </label>
               {showWithholding && (
-                <td className="center" data-label="源泉">
+                <label className="item-wh">
+                  <span className="item-label">源泉</span>
                   <input
                     type="checkbox"
                     className="inline-check"
@@ -96,31 +111,16 @@ export default function ItemsEditor({ items, rounding, showWithholding = false, 
                     checked={it.withholding !== false}
                     onChange={(e) => update(it.id, { withholding: e.target.checked })}
                   />
-                </td>
+                </label>
               )}
-              <td className="num" data-label="金額">
-                {formatNumber(lineAmount(it, rounding))}
-              </td>
-              <td className="row-actions">
-                <button type="button" className="btn btn-icon" title="上へ" onClick={() => move(idx, -1)}>
-                  ↑
-                </button>
-                <button type="button" className="btn btn-icon" title="下へ" onClick={() => move(idx, 1)}>
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-icon btn-danger"
-                  title="削除"
-                  onClick={() => onChange(items.filter((i) => i.id !== it.id))}
-                >
-                  ×
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              <div className="item-amount">
+                <span className="item-label">金額</span>
+                <span>¥{formatNumber(lineAmount(it, rounding))}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
       <button type="button" className="btn" onClick={() => onChange([...items, newItem()])}>
         ＋ 明細を追加
       </button>

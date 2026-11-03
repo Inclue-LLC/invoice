@@ -9,25 +9,23 @@ import {
   CLIENT_TYPE_LABELS,
   DOC_TYPES,
   DOC_TYPE_ORDER,
-  WITHHOLDING_PAID_LABEL,
   editPath,
   listPath,
   newPath,
   printPath,
-  statusLabel,
-  statusesFor,
 } from '../lib/docTypes';
-import { calcDueDate, formatYen, todayIso } from '../lib/format';
+import { calcDueDate, todayIso } from '../lib/format';
 import { listClients } from '../services/clients';
 import { createDocument, getDocument, nextDocumentNumber, updateDocument } from '../services/documents';
-import type { Client, ClientType, CompanySettings, DocStatus, DocType, DocumentData, Honorific } from '../types';
+import type { Client, ClientType, CompanySettings, DocType, DocumentData, Honorific } from '../types';
 
 function blankDocument(type: DocType, s: CompanySettings, email: string): DocumentData {
   const issueDate = todayIso();
   return {
     type,
     number: '',
-    status: 'draft',
+    // 作成画面では状態を選ばない。新しく作った帳票は「発行済」（入金済・支払済などは一覧のボタンで管理）
+    status: 'issued',
     issueDate,
     clientId: null,
     clientType: 'corporate',
@@ -174,14 +172,6 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
   const changeClientType = (t: ClientType) =>
     setDoc((d) => (d ? { ...d, clientType: t, clientHonorific: t === 'individual' ? '様' : '御中' } : d));
 
-  const changeStatus = (s: DocStatus) =>
-    setDoc((d) => (d ? { ...d, status: s, paidDate: s === 'paid' ? d.paidDate || todayIso() : '' } : d));
-
-  const changePaidDate = (v: string) =>
-    setDoc((d) =>
-      d ? { ...d, paidDate: v, status: v ? 'paid' : d.status === 'paid' ? 'issued' : d.status } : d,
-    );
-
   const changeIssueDate = (v: string) => {
     setDoc((d) => {
       if (!d) return d;
@@ -310,56 +300,6 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                 {doc.type === 'receipt' ? '領収日' : '発行日'}
                 <input type="date" value={doc.issueDate} onChange={(e) => changeIssueDate(e.target.value)} />
               </label>
-              <label>
-                状態
-                <select value={doc.status} onChange={(e) => changeStatus(e.target.value as DocStatus)}>
-                  {statusesFor(doc.type).map((s) => (
-                    <option key={s} value={s}>
-                      {statusLabel(doc.type, s)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {info.paidLabel && (
-                <label>
-                  {doc.type === 'invoice' ? '入金日' : '支払日'}
-                  <div className="input-with-btn">
-                    <input type="date" value={doc.paidDate} onChange={(e) => changePaidDate(e.target.value)} />
-                    {!doc.paidDate && (
-                      <button type="button" className="btn btn-sm btn-pay" onClick={() => changePaidDate(todayIso())}>
-                        {info.paidLabel}にする
-                      </button>
-                    )}
-                  </div>
-                </label>
-              )}
-              {doc.type === 'invoice' && (doc.paidDate || doc.paymentMemo) && (
-                <label>
-                  入金メモ
-                  <input value={doc.paymentMemo} onChange={(e) => set('paymentMemo', e.target.value)} />
-                </label>
-              )}
-              {info.supportsWithholding && doc.withholdingEnabled && (
-                <label>
-                  源泉徴収税の支払日（{formatYen(totals.withholdingTax)}）
-                  <div className="input-with-btn">
-                    <input
-                      type="date"
-                      value={doc.withholdingPaidDate}
-                      onChange={(e) => set('withholdingPaidDate', e.target.value)}
-                    />
-                    {!doc.withholdingPaidDate && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-pay"
-                        onClick={() => set('withholdingPaidDate', todayIso())}
-                      >
-                        {WITHHOLDING_PAID_LABEL}にする
-                      </button>
-                    )}
-                  </div>
-                </label>
-              )}
             </div>
           </section>
 

@@ -201,7 +201,7 @@ export default function DocumentPreview({ doc, company }: Props) {
         <tbody>
           {doc.items.map((it) => (
             <tr key={it.id}>
-              <td>
+              <td className="pv-pre">
                 {it.name}
                 {it.taxRate === 8 && <span className="pv-mark"> ※</span>}
                 {it.taxRate === 0 && <span className="pv-mark"> （対象外）</span>}
