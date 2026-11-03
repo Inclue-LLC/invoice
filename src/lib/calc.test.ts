@@ -77,6 +77,13 @@ describe('calcWithholdingTax', () => {
     expect(calcWithholdingTax(33333)).toBe(3403);
     expect(calcWithholdingTax(1_000_000)).toBe(102100);
   });
+  it('国税庁の計算例どおり', () => {
+    expect(calcWithholdingTax(50000)).toBe(5105);
+    expect(calcWithholdingTax(300000)).toBe(30630);
+    expect(calcWithholdingTax(999999)).toBe(102099);
+    expect(calcWithholdingTax(2_000_000)).toBe(306300);
+    expect(calcWithholdingTax(10_000_000)).toBe(1_939_900);
+  });
   it('100万円超の部分は20.42%', () => {
     expect(calcWithholdingTax(1_500_000)).toBe(204200);
     expect(calcWithholdingTax(1_000_001)).toBe(102100);
