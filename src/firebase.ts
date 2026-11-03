@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
-import { connectFirestoreEmulator, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import {
+  connectFirestoreEmulator,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 
 const env = import.meta.env;
 
@@ -21,7 +26,8 @@ export const app = initializeApp(
 );
 export const auth = getAuth(app);
 export const db = initializeFirestore(app, {
-  localCache: useEmulator ? undefined : persistentLocalCache(),
+  // 複数のタブ（一覧と印刷画面など）を同時に開いてもオフラインキャッシュを共有できるようにする
+  localCache: useEmulator ? undefined : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
 
 if (useEmulator) {
