@@ -1,9 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { allowedDomain, auth } from '../firebase';
+import { isInvited } from '../services/members';
 
 interface AuthState {
   user: User | null;
+  /** 社内ドメイン（@inclue-llc.jp）のユーザーか。ユーザー管理はこのユーザーのみ */
+  isDomainUser: boolean;
   loading: boolean;
   error: string;
   login: () => Promise<void>;
@@ -12,24 +15,39 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-function isAllowed(user: User): boolean {
+function inDomain(user: User): boolean {
   if (!allowedDomain) return true;
   return Boolean(user.email && user.emailVerified && user.email.toLowerCase().endsWith(`@${allowedDomain.toLowerCase()}`));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isDomainUser, setIsDomainUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
-      if (u && !isAllowed(u)) {
-        setError(`${u.email} ではログインできません。@${allowedDomain} のアカウントを使用してください。`);
+      if (!u) {
+        setUser(null);
+        setIsDomainUser(false);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      const domain = inDomain(u);
+      // 社外のアカウントは「ユーザー管理」で招待されている場合のみ許可
+      const allowed = domain || (u.emailVerified && Boolean(u.email) && (await isInvited(u.email!)));
+      if (!allowed) {
+        setError(
+          `${u.email} ではログインできません。@${allowedDomain} のアカウントを使うか、管理者にユーザー追加を依頼してください。`,
+        );
         await signOut(auth);
         setUser(null);
+        setIsDomainUser(false);
       } else {
         setUser(u);
+        setIsDomainUser(domain);
       }
       setLoading(false);
     });
@@ -38,7 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async () => {
     setError('');
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters(allowedDomain ? { hd: allowedDomain, prompt: 'select_account' } : { prompt: 'select_account' });
+    // 社外アカウントも選べるよう、ドメインの指定（hd）はしない
+    provider.setCustomParameters({ prompt: 'select_account' });
     try {
       await signInWithPopup(auth, provider);
     } catch (e) {
@@ -51,7 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => signOut(auth);
 
-  return <AuthContext.Provider value={{ user, loading, error, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, isDomainUser, loading, error, login, logout }}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthState {

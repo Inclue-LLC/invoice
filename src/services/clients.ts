@@ -18,6 +18,7 @@ export const EMPTY_CLIENT: ClientInput = {
   email: '',
   memo: '',
   withholding: false,
+  transferNames: '',
 };
 
 export async function listClients(): Promise<Client[]> {

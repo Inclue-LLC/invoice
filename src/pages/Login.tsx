@@ -17,7 +17,11 @@ export default function Login() {
         <button className="btn btn-primary btn-lg" onClick={() => void login()}>
           Google アカウントでログイン
         </button>
-        {allowedDomain && <p className="muted small">@{allowedDomain} のアカウントのみ利用できます</p>}
+        {allowedDomain && (
+          <p className="muted small">
+            @{allowedDomain} のアカウント、または管理者が追加した Google アカウントで利用できます
+          </p>
+        )}
       </div>
     </div>
   );

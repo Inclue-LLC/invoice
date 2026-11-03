@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import BankReconcile from '../components/BankReconcile';
 import { useAuth } from '../contexts/AuthContext';
 import {
   DOC_TYPES,
@@ -34,6 +35,7 @@ export default function DocumentList({ type }: { type: DocType }) {
   const [keyword, setKeyword] = useState('');
   const [month, setMonth] = useState('');
   const [busyId, setBusyId] = useState('');
+  const [showReconcile, setShowReconcile] = useState(false);
 
   const reload = () => {
     setLoading(true);
@@ -117,6 +119,11 @@ export default function DocumentList({ type }: { type: DocType }) {
       <div className="page-head">
         <h2>{info.label}一覧</h2>
         <div className="actions">
+          {isInvoice && (
+            <button className="btn btn-lg" onClick={() => setShowReconcile(true)} disabled={loading}>
+              🏦 銀行明細で入金消込
+            </button>
+          )}
           <button className="btn btn-primary btn-lg" onClick={() => navigate(newPath(type))}>
             ＋ {info.label}を新規作成
           </button>
@@ -275,6 +282,20 @@ export default function DocumentList({ type }: { type: DocType }) {
             </tbody>
           </table>
         </div>
+      )}
+      {showReconcile && (
+        <BankReconcile
+          invoices={docs}
+          onClose={() => setShowReconcile(false)}
+          onApplied={(patches) =>
+            setDocs((prev) =>
+              prev.map((d) => {
+                const p = patches.find((x) => x.id === d.id);
+                return p ? { ...d, ...p.patch } : d;
+              }),
+            )
+          }
+        />
       )}
       {!loading && (
         <div style={{ marginTop: 8 }}>

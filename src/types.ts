@@ -87,6 +87,8 @@ export interface DocumentData {
   paidDate: string;
   /** 発注書: 源泉徴収税の支払（納付）日（YYYY-MM-DD、未払いは空） */
   withholdingPaidDate: string;
+  /** 請求書: 入金の記録（銀行明細の照合結果など） */
+  paymentMemo: string;
   /** 変換元の帳票ID */
   sourceDocId: string | null;
   createdBy: string;
@@ -113,6 +115,8 @@ export interface Client {
   memo: string;
   /** 源泉徴収の対象（個人への報酬・料金など） */
   withholding: boolean;
+  /** 銀行明細に表示される振込名義（カナ。改行・カンマ区切りで複数可）。入金消込の照合に使う */
+  transferNames: string;
 }
 
 export interface CompanySettings {

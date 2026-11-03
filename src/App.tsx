@@ -9,6 +9,7 @@ import DocumentList from './pages/DocumentList';
 import DocumentPrint from './pages/DocumentPrint';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
+import Users from './pages/Users';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -33,6 +34,7 @@ export default function App() {
           ))}
           <Route path="/clients" element={<Clients />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/users" element={<Users />} />
           <Route path="*" element={<Navigate to={listPath('invoice')} replace />} />
         </Route>
       </Routes>

@@ -29,6 +29,7 @@ export function normalizeDocument(raw: Partial<DocumentData>): DocumentData {
     withholdingBaseMode: d.withholdingBaseMode ?? 'net',
     paidDate: d.paidDate ?? '',
     withholdingPaidDate: d.withholdingPaidDate ?? '',
+    paymentMemo: d.paymentMemo ?? '',
     totals: {
       subtotal: d.totals?.subtotal ?? 0,
       tax: d.totals?.tax ?? 0,
@@ -83,7 +84,7 @@ export async function updateDocument(id: string, data: DocumentData): Promise<vo
   await updateDoc(doc(db, 'documents', id), { ...rest, updatedAt: serverTimestamp() });
 }
 
-export type DocumentPatch = Partial<Pick<DocumentData, 'status' | 'paidDate' | 'withholdingPaidDate'>>;
+export type DocumentPatch = Partial<Pick<DocumentData, 'status' | 'paidDate' | 'withholdingPaidDate' | 'paymentMemo'>>;
 
 /** 状態・入金日・支払日など一部の項目だけを更新する */
 export async function patchDocument(id: string, patch: DocumentPatch, email: string): Promise<void> {

@@ -41,7 +41,13 @@ export default function DocumentPrint({ type }: { type: DocType }) {
         <Link className="btn" to={editPath(doc.type, doc.id)}>
           編集
         </Link>
-        <button className="btn btn-primary" onClick={() => window.print()}>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            // Web フォントの読み込みを待ってから印刷する（PDF のフォントがずれないように）
+            void document.fonts.ready.then(() => window.print());
+          }}
+        >
           印刷 / PDFで保存
         </button>
         <span className="muted small">印刷ダイアログで送信先を「PDFに保存」にするとPDFを作成できます（用紙A4・余白なし推奨）</span>

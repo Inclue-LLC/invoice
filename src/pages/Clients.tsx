@@ -129,6 +129,18 @@ export default function Clients() {
               源泉徴収の対象（この取引先を選んだ発注書で、源泉徴収を自動でオンにします）
             </label>
             <label className="span-2">
+              振込名義（カナ）
+              <textarea
+                rows={2}
+                value={editing.data.transferNames}
+                placeholder={'例: ｶ)ｻﾝﾌﾟﾙ\n複数ある場合は改行で区切ってください'}
+                onChange={(e) => set('transferNames', e.target.value)}
+              />
+              <span className="muted small">
+                銀行の入出金明細に表示される名義です。請求書一覧の「銀行明細で入金消込」で、入金と請求書の照合に使います。消込のときに自動で登録することもできます。
+              </span>
+            </label>
+            <label className="span-2">
               メモ
               <textarea rows={2} value={editing.data.memo} onChange={(e) => set('memo', e.target.value)} />
             </label>

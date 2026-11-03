@@ -52,6 +52,7 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     paymentMethod: type === 'receipt' ? '銀行振込' : '',
     paidDate: '',
     withholdingPaidDate: '',
+    paymentMemo: '',
     sourceDocId: null,
     createdBy: email,
     updatedBy: email,
@@ -330,6 +331,12 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                       </button>
                     )}
                   </div>
+                </label>
+              )}
+              {doc.type === 'invoice' && (doc.paidDate || doc.paymentMemo) && (
+                <label>
+                  入金メモ
+                  <input value={doc.paymentMemo} onChange={(e) => set('paymentMemo', e.target.value)} />
                 </label>
               )}
               {info.supportsWithholding && doc.withholdingEnabled && (
