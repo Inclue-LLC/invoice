@@ -24,6 +24,10 @@ describe('pl', () => {
     expect(plRecordedDateOnSave({ type: 'invoice', status: 'issued', pl: null, plRecordedDate: '' }, '2026-11-18')).toBe('');
   });
 
+  it('always books invoices to Japan', () => {
+    expect(cleanPl({ ...blankPl(), country: 'CN', character: 'ふにゅ' }).country).toBe('JP');
+  });
+
   it('validates required fields per kind and clears unrelated ones', () => {
     expect(validatePl({ ...blankPl(), character: '' })).toMatch(/キャラクター/);
     expect(validatePl({ ...blankPl(), character: 'ふにゅ' })).toBeNull();

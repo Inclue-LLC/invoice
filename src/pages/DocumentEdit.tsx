@@ -24,7 +24,6 @@ import { calcDueDate, todayIso } from '../lib/format';
 import {
   PL_APP_URL,
   PL_CHARACTERS,
-  PL_COUNTRY_LABELS,
   PL_KIND_LABELS,
   PL_TYPES,
   blankPl,
@@ -513,20 +512,10 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                     checked={Boolean(doc.pl)}
                     onChange={(e) => set('pl', e.target.checked ? blankPl(doc.subject) : null)}
                   />
-                  この請求書を PL管理の売上に反映する
+                  この請求書を PL管理の売上（日本）に反映する
                 </label>
                 {doc.pl && (
                   <>
-                    <label>
-                      国
-                      <select value={doc.pl.country} onChange={(e) => setPl({ country: e.target.value as PlLink['country'] })}>
-                        {(Object.keys(PL_COUNTRY_LABELS) as PlLink['country'][]).map((c) => (
-                          <option key={c} value={c}>
-                            {PL_COUNTRY_LABELS[c]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
                     <label>
                       区分
                       <select value={doc.pl.kind} onChange={(e) => changePlKind(e.target.value as PlKind)}>
@@ -592,7 +581,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                     )}
                     <div className="hint span-2">
                       税込合計 ¥{totals.total.toLocaleString('ja-JP')} を、お支払期限の月（
-                      {plMonth(doc).replace('-', '年').replace(/年0?/, '年')}月）の売上として
+                      {plMonth(doc).replace('-', '年').replace(/年0?/, '年')}月）の日本の売上として
                       <a href={PL_APP_URL} target="_blank" rel="noreferrer">
                         PL管理
                       </a>

@@ -6,7 +6,6 @@ import type { DocumentData, PlKind, PlLink } from '../types';
 
 export const PL_APP_URL = 'https://inclue-sales.web.app';
 
-export const PL_COUNTRY_LABELS = { CN: '中国', JP: '日本' } as const;
 export const PL_KIND_LABELS: Record<PlKind, string> = { license: 'ライセンス', offline: 'オフライン', other: 'その他' };
 /** 区分ごとの種別の選択肢（PL管理アプリと同じ値） */
 export const PL_TYPES: Record<PlKind, string[]> = {
@@ -43,7 +42,8 @@ export function validatePl(pl: PlLink): string | null {
 /** 保存用に整える（区分に関係ない項目は空にする） */
 export function cleanPl(pl: PlLink): PlLink {
   return {
-    country: pl.country,
+    country: 'JP', // 請求書ツールの売上はすべて日本
+
     kind: pl.kind,
     character: pl.kind === 'other' ? '' : pl.character.trim(),
     type: pl.kind === 'other' ? '' : pl.type,

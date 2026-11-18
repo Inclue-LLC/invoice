@@ -58,6 +58,7 @@ export type PlKind = 'license' | 'offline' | 'other';
  * PL管理アプリがこの項目を読み取り、税込合計を「お支払期限の月」の売上として集計する。
  */
 export interface PlLink {
+  /** 請求書ツールの売上はすべて日本（選択欄は無く、常に 'JP'） */
   country: PlCountry;
   kind: PlKind;
   /** ライセンス・オフライン: キャラクター */
