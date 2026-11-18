@@ -341,3 +341,9 @@ details > summary.section-title { cursor: pointer; }
 .bank-field label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 .bank-preview { border: 1px solid #e3e8ee; border-radius: 6px; background: #f6f8fa; padding: 8px 10px; font-size: 13px; }
 .grid .bank-account label.radio { flex-direction: row; align-items: center; color: var(--text); font-size: 13px; gap: 4px; }
+
+/* PL記載 */
+.btn-pl { border-color: #8250df; color: #6639ba; background: #fbf8ff; }
+.btn-pl:hover { background: #f3ecff; }
+.pl-mark { color: #6639ba; }
+.summary-link { font-size: 14px; font-weight: 600; color: #6639ba; padding: 0; }

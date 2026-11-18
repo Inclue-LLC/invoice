@@ -89,6 +89,8 @@ export interface DocumentData {
   paidDate: string;
   /** 発注書: 源泉徴収税の支払（納付）日（YYYY-MM-DD、未払いは空） */
   withholdingPaidDate: string;
+  /** 請求書: PL（損益計算書）に記載した日（YYYY-MM-DD、未記載は空）。入金とは別に管理する */
+  plRecordedDate: string;
   /** 請求書: 入金の記録（銀行明細の照合結果など） */
   paymentMemo: string;
   /** 変換元の帳票ID */

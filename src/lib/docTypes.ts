@@ -81,6 +81,9 @@ export function statusLabel(type: DocType, status: DocStatus): string {
   return STATUS_LABELS[status];
 }
 
+/** 請求書を PL（損益計算書）に記載したことを表すラベル */
+export const PL_RECORDED_LABEL = 'PL記載済';
+
 /** 源泉徴収税の支払（納付）状況のラベル */
 export const WITHHOLDING_PAID_LABEL = '源泉支払済';
 

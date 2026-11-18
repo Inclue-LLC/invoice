@@ -4,6 +4,7 @@ import BankReconcile from '../components/BankReconcile';
 import { useAuth } from '../contexts/AuthContext';
 import {
   DOC_TYPES,
+  PL_RECORDED_LABEL,
   WITHHOLDING_PAID_LABEL,
   editPath,
   newPath,
@@ -21,6 +22,13 @@ function shortDate(iso: string): string {
   return m ? `${Number(m[1])}/${Number(m[2])}` : iso;
 }
 
+/** 一覧の絞り込み（状態 / 未入金・未払い / PL未記載） */
+type StatusFilter = DocStatus | 'unpaid' | 'pl_pending' | '';
+
+/** まだ PL に記載していない請求書（入金とは別に管理。下書き・取消は除く） */
+const isPlPending = (d: StoredDocument) =>
+  d.type === 'invoice' && d.status !== 'cancelled' && d.status !== 'draft' && !d.plRecordedDate;
+
 export default function DocumentList({ type }: { type: DocType }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -33,12 +41,12 @@ export default function DocumentList({ type }: { type: DocType }) {
   const [error, setError] = useState('');
   // 売上管理などから ?month=2026-10 / ?status=unpaid 付きで開かれたときは、その条件で絞り込む
   const [params] = useSearchParams();
-  const initialStatus = () => {
+  const initialStatus = (): StatusFilter => {
     const s = params.get('status') ?? '';
-    return (s === 'unpaid' || (statusesFor(type) as string[]).includes(s) ? s : '') as DocStatus | 'unpaid' | '';
+    return (s === 'unpaid' || (isInvoice && s === 'pl_pending') || (statusesFor(type) as string[]).includes(s) ? s : '') as StatusFilter;
   };
   const initialMonth = () => (/^\d{4}-\d{2}$/.test(params.get('month') ?? '') ? params.get('month')! : '');
-  const [status, setStatus] = useState<DocStatus | 'unpaid' | ''>(initialStatus);
+  const [status, setStatus] = useState<StatusFilter>(initialStatus);
   const [keyword, setKeyword] = useState('');
   const [month, setMonth] = useState(initialMonth);
   const [busyId, setBusyId] = useState('');
@@ -75,13 +83,15 @@ export default function DocumentList({ type }: { type: DocType }) {
     const kw = keyword.trim().toLowerCase();
     return docs.filter(
       (d) =>
-        (!status || (status === 'unpaid' ? isUnpaid(d) : d.status === status)) &&
+        (!status ||
+          (status === 'unpaid' ? isUnpaid(d) : status === 'pl_pending' ? isPlPending(d) : d.status === status)) &&
         (!month || d.issueDate.startsWith(month)) &&
         (!kw || [d.number, d.clientName, d.subject].some((v) => v?.toLowerCase().includes(kw))),
     );
   }, [docs, status, keyword, month]);
 
   const active = filtered.filter((d) => d.status !== 'cancelled');
+  const plPendingCount = isInvoice ? docs.filter(isPlPending).length : 0;
   const sumTotal = active.reduce((s, d) => s + d.totals.total, 0);
   const sumUnpaid = active
     .filter((d) => d.status !== 'paid' && !(isInvoice && d.status === 'draft'))
@@ -106,6 +116,11 @@ export default function DocumentList({ type }: { type: DocType }) {
   const unmarkPaid = (d: StoredDocument) => {
     if (!confirm(`${d.number} の「${info.paidLabel}」を取り消しますか？`)) return;
     void patch(d, { status: 'issued', paidDate: '' });
+  };
+  const markPlRecorded = (d: StoredDocument) => patch(d, { plRecordedDate: todayIso() });
+  const unmarkPlRecorded = (d: StoredDocument) => {
+    if (!confirm(`${d.number} の「${PL_RECORDED_LABEL}」を取り消しますか？`)) return;
+    void patch(d, { plRecordedDate: '' });
   };
   const markWithholdingPaid = (d: StoredDocument) => patch(d, { withholdingPaidDate: todayIso() });
   const unmarkWithholdingPaid = (d: StoredDocument) => {
@@ -145,14 +160,25 @@ export default function DocumentList({ type }: { type: DocType }) {
       </div>
 
       <div className="filters card">
-        <select value={status} onChange={(e) => setStatus(e.target.value as DocStatus | 'unpaid' | '')}>
-          <option value="">すべての状態</option>
-          {info.paidLabel && <option value="unpaid">未{isInvoice ? '入金' : '払い'}のみ</option>}
-          {statusesFor(type).map((s) => (
-            <option key={s} value={s}>
-              {statusLabel(type, s)}
-            </option>
-          ))}
+        <select value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
+          {isInvoice ? (
+            <>
+              <option value="">すべて</option>
+              <option value="unpaid">未入金</option>
+              <option value="paid">入金済</option>
+              <option value="pl_pending">PL未記載</option>
+            </>
+          ) : (
+            <>
+              <option value="">すべての状態</option>
+              {info.paidLabel && <option value="unpaid">未払いのみ</option>}
+              {statusesFor(type).map((s) => (
+                <option key={s} value={s}>
+                  {statusLabel(type, s)}
+                </option>
+              ))}
+            </>
+          )}
         </select>
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} title="発行月" />
         <input
@@ -165,6 +191,11 @@ export default function DocumentList({ type }: { type: DocType }) {
           <span>{filtered.length} 件</span>
           <span>合計 {formatYen(sumTotal)}</span>
           {isInvoice && <span className="warn">未入金 {formatYen(sumUnpaid)}</span>}
+          {isInvoice && plPendingCount > 0 && (
+            <button className="link-btn summary-link" onClick={() => setStatus('pl_pending')}>
+              PL未記載 {plPendingCount} 件
+            </button>
+          )}
           {isPO && <span className="warn">未払い {formatYen(sumUnpaid)}</span>}
           {isPO && sumWithholdingUnpaid > 0 && <span className="warn">源泉未払い {formatYen(sumWithholdingUnpaid)}</span>}
         </div>
@@ -191,8 +222,9 @@ export default function DocumentList({ type }: { type: DocType }) {
                 <th>件名</th>
                 <th className="num">金額（税込）</th>
                 {isInvoice && <th>お支払期限</th>}
-                <th>状態</th>
+                {!isInvoice && <th>状態</th>}
                 {info.paidLabel && <th>{isInvoice ? '入金' : '支払'}</th>}
+                {isInvoice && <th>PL</th>}
                 {isPO && <th>源泉</th>}
                 <th />
               </tr>
@@ -223,6 +255,7 @@ export default function DocumentList({ type }: { type: DocType }) {
                         {overdue && <div className="small">期限超過</div>}
                       </td>
                     )}
+                    {!isInvoice && (
                     <td>
                       <select
                         className={`status status-${d.status}`}
@@ -237,6 +270,7 @@ export default function DocumentList({ type }: { type: DocType }) {
                         ))}
                       </select>
                     </td>
+                    )}
                     {info.paidLabel && (
                       <td className="pay-cell">
                         {paid ? (
@@ -250,6 +284,23 @@ export default function DocumentList({ type }: { type: DocType }) {
                         ) : d.status !== 'cancelled' ? (
                           <button className="btn btn-sm btn-pay" disabled={busy} onClick={() => void markPaid(d)}>
                             {info.paidLabel}にする
+                          </button>
+                        ) : null}
+                      </td>
+                    )}
+                    {isInvoice && (
+                      <td className="pay-cell">
+                        {d.plRecordedDate ? (
+                          <span className="paid-mark pl-mark">
+                            ✓ {PL_RECORDED_LABEL}
+                            <span className="small"> {shortDate(d.plRecordedDate)}</span>
+                            <button className="link-btn" disabled={busy} onClick={() => unmarkPlRecorded(d)}>
+                              取消
+                            </button>
+                          </span>
+                        ) : d.status !== 'cancelled' ? (
+                          <button className="btn btn-sm btn-pl" disabled={busy} onClick={() => void markPlRecorded(d)}>
+                            {PL_RECORDED_LABEL}にする
                           </button>
                         ) : null}
                       </td>

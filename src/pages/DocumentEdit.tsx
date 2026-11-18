@@ -60,6 +60,7 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     paidDate: '',
     withholdingPaidDate: '',
     paymentMemo: '',
+    plRecordedDate: '',
     sourceDocId: null,
     createdBy: email,
     updatedBy: email,
