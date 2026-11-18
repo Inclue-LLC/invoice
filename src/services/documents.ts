@@ -31,6 +31,7 @@ export function normalizeDocument(raw: Partial<DocumentData>): DocumentData {
     withholdingPaidDate: d.withholdingPaidDate ?? '',
     paymentMemo: d.paymentMemo ?? '',
     plRecordedDate: d.plRecordedDate ?? '',
+    pl: d.type === 'invoice' ? (d.pl ?? null) : null,
     bankInfo: d.bankInfo ?? '',
     // 振込先の選択機能より前の請求書は、保存されている内容をそのまま使う
     bankAccountId: d.bankAccountId ?? (d.bankInfo ? 'custom' : ''),

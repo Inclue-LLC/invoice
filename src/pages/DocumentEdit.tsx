@@ -21,9 +21,21 @@ import {
   printPath,
 } from '../lib/docTypes';
 import { calcDueDate, todayIso } from '../lib/format';
+import {
+  PL_APP_URL,
+  PL_CHARACTERS,
+  PL_COUNTRY_LABELS,
+  PL_KIND_LABELS,
+  PL_TYPES,
+  blankPl,
+  cleanPl,
+  plMonth,
+  plRecordedDateOnSave,
+  validatePl,
+} from '../lib/pl';
 import { listClients } from '../services/clients';
 import { createDocument, getDocument, nextDocumentNumber, updateDocument } from '../services/documents';
-import type { Client, ClientType, CompanySettings, DocType, DocumentData, Honorific } from '../types';
+import type { Client, ClientType, CompanySettings, DocType, DocumentData, Honorific, PlKind, PlLink } from '../types';
 
 function blankDocument(type: DocType, s: CompanySettings, email: string): DocumentData {
   const issueDate = todayIso();
@@ -61,6 +73,7 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     withholdingPaidDate: '',
     paymentMemo: '',
     plRecordedDate: '',
+    pl: null,
     sourceDocId: null,
     createdBy: email,
     updatedBy: email,
@@ -90,6 +103,8 @@ function deriveDocument(src: DocumentData, srcId: string, type: DocType, s: Comp
     paymentTerms: src.paymentTerms ?? '',
     receiptPurpose: type === 'receipt' ? src.receiptPurpose || src.subject || 'お品代' : '',
     paymentMethod: src.paymentMethod || base.paymentMethod,
+    // 請求書のコピーは PL の区分も引き継ぐ
+    pl: same && type === 'invoice' && src.pl ? { ...src.pl } : null,
     // コピー時は同じ振込先を選ぶ（自社設定の内容が変わっていれば最新の内容にする）
     ...(same && src.bankAccountId ? copyBank(src, s) : {}),
     sourceDocId: srcId,
@@ -218,6 +233,11 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
     if (!doc.clientName.trim()) return setError(`${info.recipientLabel}を入力してください`);
     const items = doc.items.filter((i) => i.name.trim() || i.unitPrice);
     if (items.length === 0) return setError('明細を1行以上入力してください');
+    const pl = doc.type === 'invoice' && doc.pl ? cleanPl(doc.pl) : null;
+    if (pl) {
+      const msg = validatePl(pl);
+      if (msg) return setError(msg);
+    }
     setSaving(true);
     try {
       const data: DocumentData = {
@@ -228,8 +248,11 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
           enabled: info.supportsWithholding && doc.withholdingEnabled,
           baseMode: doc.withholdingBaseMode,
         }),
+        pl,
         updatedBy: email,
       };
+      // PL に反映される請求書は自動で「PL記載済」にする
+      data.plRecordedDate = plRecordedDateOnSave(data, todayIso());
       let docId = id;
       if (docId) {
         await updateDocument(docId, data);
@@ -248,6 +271,23 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
       setSaving(false);
     }
   };
+
+  const setPl = (patch: Partial<PlLink>) => setDoc((d) => (d && d.pl ? { ...d, pl: { ...d.pl, ...patch } } : d));
+  const changePlKind = (kind: PlKind) =>
+    setDoc((d) =>
+      d && d.pl
+        ? {
+            ...d,
+            pl: {
+              ...d.pl,
+              kind,
+              type: PL_TYPES[kind][0] ?? '',
+              venue: d.pl.venue || (kind === 'offline' ? d.subject : ''),
+              content: d.pl.content || (kind === 'other' ? d.subject : ''),
+            },
+          }
+        : d,
+    );
 
   const previewDoc: DocumentData = { ...doc, totals, number: doc.number || '（保存時に採番）' };
 
@@ -462,6 +502,107 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
               </label>
             </div>
           </section>
+
+          {doc.type === 'invoice' && (
+            <section className="card">
+              <h3>PL管理への反映</h3>
+              <div className="grid">
+                <label className="checkbox span-2">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(doc.pl)}
+                    onChange={(e) => set('pl', e.target.checked ? blankPl(doc.subject) : null)}
+                  />
+                  この請求書を PL管理の売上に反映する
+                </label>
+                {doc.pl && (
+                  <>
+                    <label>
+                      国
+                      <select value={doc.pl.country} onChange={(e) => setPl({ country: e.target.value as PlLink['country'] })}>
+                        {(Object.keys(PL_COUNTRY_LABELS) as PlLink['country'][]).map((c) => (
+                          <option key={c} value={c}>
+                            {PL_COUNTRY_LABELS[c]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      区分
+                      <select value={doc.pl.kind} onChange={(e) => changePlKind(e.target.value as PlKind)}>
+                        {(Object.keys(PL_KIND_LABELS) as PlKind[]).map((k) => (
+                          <option key={k} value={k}>
+                            {PL_KIND_LABELS[k]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {doc.pl.kind !== 'other' && (
+                      <>
+                        <label>
+                          キャラクター *
+                          <select
+                            value={PL_CHARACTERS.includes(doc.pl.character) || !doc.pl.character ? doc.pl.character : '__other__'}
+                            onChange={(e) => setPl({ character: e.target.value === '__other__' ? ' ' : e.target.value })}
+                          >
+                            <option value="" disabled>
+                              選択してください
+                            </option>
+                            {PL_CHARACTERS.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                            <option value="__other__">その他（直接入力）</option>
+                          </select>
+                        </label>
+                        {doc.pl.character !== '' && !PL_CHARACTERS.includes(doc.pl.character) && (
+                          <label>
+                            キャラクター名
+                            <input
+                              autoFocus
+                              value={doc.pl.character.trimStart()}
+                              onChange={(e) => setPl({ character: e.target.value || ' ' })}
+                            />
+                          </label>
+                        )}
+                        <label>
+                          種別
+                          <select value={doc.pl.type} onChange={(e) => setPl({ type: e.target.value })}>
+                            {PL_TYPES[doc.pl.kind].map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </>
+                    )}
+                    {doc.pl.kind === 'offline' && (
+                      <label className="span-2">
+                        お店・イベント名 *
+                        <input value={doc.pl.venue} onChange={(e) => setPl({ venue: e.target.value })} />
+                      </label>
+                    )}
+                    {doc.pl.kind === 'other' && (
+                      <label className="span-2">
+                        案件内容 *
+                        <input value={doc.pl.content} onChange={(e) => setPl({ content: e.target.value })} />
+                      </label>
+                    )}
+                    <div className="hint span-2">
+                      税込合計 ¥{totals.total.toLocaleString('ja-JP')} を、お支払期限の月（
+                      {plMonth(doc).replace('-', '年').replace(/年0?/, '年')}月）の売上として
+                      <a href={PL_APP_URL} target="_blank" rel="noreferrer">
+                        PL管理
+                      </a>
+                      に反映します（円 → 元は PL管理の設定レートで換算）。保存すると「PL記載済」になります。下書き・取消の請求書は反映されません。
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
+          )}
 
           {info.supportsWithholding && (
             <section className="card">
