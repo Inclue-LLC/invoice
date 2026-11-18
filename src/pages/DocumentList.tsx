@@ -223,8 +223,8 @@ export default function DocumentList({ type }: { type: DocType }) {
                 <th className="num">金額（税込）</th>
                 {isInvoice && <th>お支払期限</th>}
                 {!isInvoice && <th>状態</th>}
-                {info.paidLabel && <th>{isInvoice ? '入金' : '支払'}</th>}
                 {isInvoice && <th>PL</th>}
+                {info.paidLabel && <th>{isInvoice ? '入金' : '支払'}</th>}
                 {isPO && <th>源泉</th>}
                 <th />
               </tr>
@@ -271,23 +271,6 @@ export default function DocumentList({ type }: { type: DocType }) {
                       </select>
                     </td>
                     )}
-                    {info.paidLabel && (
-                      <td className="pay-cell">
-                        {paid ? (
-                          <span className="paid-mark">
-                            ✓ {info.paidLabel}
-                            {d.paidDate && <span className="small"> {shortDate(d.paidDate)}</span>}
-                            <button className="link-btn" disabled={busy} onClick={() => unmarkPaid(d)}>
-                              取消
-                            </button>
-                          </span>
-                        ) : d.status !== 'cancelled' ? (
-                          <button className="btn btn-sm btn-pay" disabled={busy} onClick={() => void markPaid(d)}>
-                            {info.paidLabel}にする
-                          </button>
-                        ) : null}
-                      </td>
-                    )}
                     {isInvoice && (
                       <td className="pay-cell">
                         {d.plRecordedDate ? (
@@ -301,6 +284,23 @@ export default function DocumentList({ type }: { type: DocType }) {
                         ) : d.status !== 'cancelled' ? (
                           <button className="btn btn-sm btn-pl" disabled={busy} onClick={() => void markPlRecorded(d)}>
                             {PL_RECORDED_LABEL}にする
+                          </button>
+                        ) : null}
+                      </td>
+                    )}
+                    {info.paidLabel && (
+                      <td className="pay-cell">
+                        {paid ? (
+                          <span className="paid-mark">
+                            ✓ {info.paidLabel}
+                            {d.paidDate && <span className="small"> {shortDate(d.paidDate)}</span>}
+                            <button className="link-btn" disabled={busy} onClick={() => unmarkPaid(d)}>
+                              取消
+                            </button>
+                          </span>
+                        ) : d.status !== 'cancelled' ? (
+                          <button className="btn btn-sm btn-pay" disabled={busy} onClick={() => void markPaid(d)}>
+                            {info.paidLabel}にする
                           </button>
                         ) : null}
                       </td>
