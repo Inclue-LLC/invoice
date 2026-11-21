@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blankPl, cleanPl, isReflectedToPl, plMonth, plRecordedDateOnSave, validatePl } from './pl';
+import { blankPl, cleanPl, isReflectedToPl, plCompanyName, plMonth, plRecordedDateOnSave, stripCompanyType, validatePl } from './pl';
 
 describe('pl', () => {
   it('uses the due-date month, falling back to the issue date', () => {
@@ -36,5 +36,19 @@ describe('pl', () => {
     expect(cleanPl({ ...blankPl('件名'), kind: 'other', character: 'x', venue: 'y' })).toEqual({
       country: 'JP', kind: 'other', character: '', type: '', venue: '', content: '件名',
     });
+  });
+});
+
+describe('plCompanyName', () => {
+  it('strips the company type like PL管理 does', () => {
+    expect(stripCompanyType('株式会社サンプル')).toBe('サンプル');
+    expect(stripCompanyType('サンプル（株）')).toBe('サンプル');
+    expect(stripCompanyType('Sample Co., Ltd.')).toBe('Sample');
+    expect(stripCompanyType('上海示例文化有限公司')).toBe('上海示例文化');
+  });
+  it('prefers the client master name and skips offline', () => {
+    expect(plCompanyName('license', '株式会社サンプル 営業部', '株式会社サンプル')).toBe('サンプル');
+    expect(plCompanyName('other', '有限会社テスト')).toBe('テスト');
+    expect(plCompanyName('offline', '株式会社サンプル')).toBeNull();
   });
 });

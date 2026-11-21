@@ -60,3 +60,32 @@ export function plRecordedDateOnSave(d: Pick<DocumentData, 'type' | 'status' | '
   if (isReflectedToPl(d)) return d.plRecordedDate || today;
   return d.plRecordedDate;
 }
+
+// ---- ライセンシー名・会社名 ----
+// PL管理では、ライセンスの「ライセンシー」・その他の「会社名」に、取引先マスタの会社名
+// （なければ宛名）から「株式会社」などを省いた名前が入る。PL管理（functions/src/domain/company.ts）と同じ処理。
+
+const JA = [
+  '株式会社', '有限会社', '合同会社', '合資会社', '合名会社',
+  '一般社団法人', '一般財団法人', '公益社団法人', '公益財団法人', '特定非営利活動法人', 'NPO法人',
+  '股份有限公司', '有限责任公司', '有限責任公司', '有限公司', '集团', '集團',
+];
+// (株) （株） ㈱ など
+const ABBR = /[（(]\s*(株|有|同|合|名|資|社|財)\s*[)）]|[㈱㈲㈳㈶]/g;
+// 英語の会社の種類（末尾）
+const EN = /[\s,.]*\b(co\.?,?\s*ltd|company\s+limited|co\.?\s*limited|corporation|corp|incorporated|inc|llc|ltd|limited|k\.?\s*k|g\.?\s*k|gmbh|pte\.?\s*ltd|plc)\.?\s*$/i;
+
+export function stripCompanyType(name: string): string {
+  let s = (name ?? '').normalize('NFKC').trim();
+  s = s.replace(ABBR, ' ');
+  for (const w of JA) s = s.split(w).join(' ');
+  for (let i = 0; i < 3 && EN.test(s); i++) s = s.replace(EN, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s || (name ?? '').trim();
+}
+
+/** PL管理に入るライセンシー名・会社名（ライセンス・その他のみ。オフラインは null） */
+export function plCompanyName(kind: PlKind, clientName: string, clientMasterName?: string): string | null {
+  if (kind === 'offline') return null;
+  return stripCompanyType(clientMasterName || clientName || '');
+}

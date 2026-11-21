@@ -347,3 +347,5 @@ details > summary.section-title { cursor: pointer; }
 .btn-pl:hover { background: #f3ecff; }
 .pl-mark { color: #6639ba; }
 .summary-link { font-size: 14px; font-weight: 600; color: #6639ba; padding: 0; }
+.pl-company { font-size: 13px; }
+.pl-company .hint { margin-left: 8px; background: none; padding: 0; }

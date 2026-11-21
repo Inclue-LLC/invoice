@@ -23,6 +23,7 @@ import {
 import { calcDueDate, todayIso } from '../lib/format';
 import {
   PL_APP_URL,
+  plCompanyName,
   PL_CHARACTERS,
   PL_KIND_LABELS,
   PL_TYPES,
@@ -579,6 +580,16 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                         <input value={doc.pl.content} onChange={(e) => setPl({ content: e.target.value })} />
                       </label>
                     )}
+                    {(() => {
+                      const name = plCompanyName(doc.pl.kind, doc.clientName, clients.find((c) => c.id === doc.clientId)?.name);
+                      if (name === null) return null;
+                      return (
+                        <div className="span-2 pl-company">
+                          {doc.pl.kind === 'license' ? 'ライセンシー' : '会社名'}：<strong>{name || '（宛先を入力してください）'}</strong>
+                          <span className="hint">宛先の会社名から「株式会社」などを省いて自動で入ります</span>
+                        </div>
+                      );
+                    })()}
                     <div className="hint span-2">
                       税込合計 ¥{totals.total.toLocaleString('ja-JP')} を、お支払期限の月（
                       {plMonth(doc).replace('-', '年').replace(/年0?/, '年')}月）の日本の売上として
