@@ -155,7 +155,7 @@ export default function Settings() {
       </section>
 
       <section className="card">
-        <h3>請求書の初期値</h3>
+        <h3>請求書・見積書の初期値</h3>
         <div className="grid">
           <div className="span-2 bank-accounts">
             <div className="bank-accounts-head">
@@ -210,6 +210,15 @@ export default function Settings() {
               <option value={14}>発行日から14日後</option>
               <option value={30}>発行日から30日後</option>
               <option value={60}>発行日から60日後</option>
+            </select>
+          </label>
+          <label>
+            見積書の有効期限
+            <select value={form.quoteValidDays} onChange={(e) => set('quoteValidDays', Number(e.target.value))}>
+              <option value={14}>発行日から14日後</option>
+              <option value={30}>発行日から30日後</option>
+              <option value={60}>発行日から60日後</option>
+              <option value={90}>発行日から90日後</option>
             </select>
           </label>
         </div>

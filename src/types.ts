@@ -1,4 +1,4 @@
-export type DocType = 'invoice' | 'purchase_order' | 'delivery_note' | 'receipt';
+export type DocType = 'quote' | 'invoice' | 'purchase_order' | 'delivery_note' | 'receipt';
 export type DocStatus = 'draft' | 'issued' | 'paid' | 'cancelled';
 export type TaxRate = 10 | 8 | 0;
 /** exclusive: 外税（単価は税抜） / inclusive: 内税（単価は税込） */
@@ -71,6 +71,8 @@ export interface DocumentData {
   totals: Totals;
   /** 請求書: お支払期限 */
   dueDate: string;
+  /** 見積書: 有効期限 */
+  validUntil: string;
   /** 請求書: 振込先（記載する内容。発行時点の内容を保存する） */
   bankInfo: string;
   /** 請求書: 選んだ振込先の ID（'' = 記載しない / 'custom' = 自社設定に無い保存済みの内容） */
@@ -158,4 +160,6 @@ export interface CompanySettings {
   defaultNotes: Record<DocType, string>;
   /** 請求書の支払期限（発行日からの日数, 0 = 翌月末） */
   invoiceDueDays: number;
+  /** 見積書の有効期限（発行日からの日数） */
+  quoteValidDays: number;
 }

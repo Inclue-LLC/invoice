@@ -18,6 +18,16 @@ export interface DocTypeInfo {
 }
 
 export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
+  quote: {
+    label: '見積書',
+    recipientLabel: '宛先',
+    amountLabel: '御見積金額',
+    lead: '下記の通りお見積り申し上げます。',
+    defaultPrefix: 'QT',
+    supportsWithholding: false,
+    path: 'quotes',
+    paidLabel: null,
+  },
   invoice: {
     label: '請求書',
     recipientLabel: '請求先',
@@ -62,7 +72,7 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
 
 export const CLIENT_TYPE_LABELS = { corporate: '法人', individual: '個人' } as const;
 
-export const DOC_TYPE_ORDER: DocType[] = ['invoice', 'purchase_order', 'delivery_note', 'receipt'];
+export const DOC_TYPE_ORDER: DocType[] = ['quote', 'invoice', 'purchase_order', 'delivery_note', 'receipt'];
 
 export const STATUS_LABELS: Record<DocStatus, string> = {
   draft: '下書き',

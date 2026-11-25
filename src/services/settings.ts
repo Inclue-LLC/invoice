@@ -23,18 +23,21 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   defaultTaxMode: 'exclusive',
   defaultRounding: 'floor',
   prefixes: {
+    quote: DOC_TYPES.quote.defaultPrefix,
     invoice: DOC_TYPES.invoice.defaultPrefix,
     purchase_order: DOC_TYPES.purchase_order.defaultPrefix,
     delivery_note: DOC_TYPES.delivery_note.defaultPrefix,
     receipt: DOC_TYPES.receipt.defaultPrefix,
   },
   defaultNotes: {
+    quote: '',
     invoice: '恐れ入りますが、振込手数料は貴社にてご負担ください。',
     purchase_order: '',
     delivery_note: '',
     receipt: '',
   },
   invoiceDueDays: 0,
+  quoteValidDays: 30,
 };
 
 export async function loadSettings(): Promise<CompanySettings> {

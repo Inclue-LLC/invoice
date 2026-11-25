@@ -50,6 +50,7 @@ function blankDocument(type: DocType, s: CompanySettings, email: string): Docume
     withholdingBaseMode: 'net',
     totals: { subtotal: 0, tax: 0, total: 0, byRate: [], withholdingBase: 0, withholdingTax: 0, payable: 0 },
     dueDate: type === 'invoice' ? calcDueDate(issueDate, s.invoiceDueDays) : '',
+    validUntil: type === 'quote' ? calcDueDate(issueDate, s.quoteValidDays || 30) : '',
     bankInfo: bank?.text ?? '',
     bankAccountId: bank?.id ?? '',
     deliveryDate: type === 'delivery_note' ? issueDate : '',
@@ -209,6 +210,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
       const next = { ...d, issueDate: v };
       // 新規作成時は発行日に合わせて支払期限を再計算
       if (!id && d.type === 'invoice') next.dueDate = calcDueDate(v, settings.invoiceDueDays);
+      if (!id && d.type === 'quote') next.validUntil = calcDueDate(v, settings.quoteValidDays || 30);
       return next;
     });
   };
@@ -398,13 +400,19 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                   <input type="date" value={doc.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
                 </label>
               )}
-              {(doc.type === 'purchase_order' || doc.type === 'delivery_note') && (
+              {doc.type === 'quote' && (
                 <label>
-                  {doc.type === 'purchase_order' ? '納期' : '納品日'}
+                  有効期限
+                  <input type="date" value={doc.validUntil} onChange={(e) => set('validUntil', e.target.value)} />
+                </label>
+              )}
+              {(doc.type === 'quote' || doc.type === 'purchase_order' || doc.type === 'delivery_note') && (
+                <label>
+                  {doc.type === 'delivery_note' ? '納品日' : '納期'}
                   <input type="date" value={doc.deliveryDate} onChange={(e) => set('deliveryDate', e.target.value)} />
                 </label>
               )}
-              {doc.type === 'purchase_order' && (
+              {(doc.type === 'quote' || doc.type === 'purchase_order') && (
                 <>
                   <label>
                     納品場所

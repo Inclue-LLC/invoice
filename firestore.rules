@@ -25,7 +25,7 @@ service cloud.firestore {
     }
 
     function validDocument(d) {
-      return d.type in ['invoice', 'purchase_order', 'delivery_note', 'receipt']
+      return d.type in ['quote', 'invoice', 'purchase_order', 'delivery_note', 'receipt']
         && d.status in ['draft', 'issued', 'paid', 'cancelled']
         && d.number is string && d.number.size() <= 64
         && d.items is list && d.items.size() <= 200;

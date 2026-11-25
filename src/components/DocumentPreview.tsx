@@ -152,7 +152,13 @@ export default function DocumentPreview({ doc, company }: Props) {
                   <td>{formatDateJa(doc.dueDate)}</td>
                 </tr>
               )}
-              {doc.type === 'purchase_order' && doc.deliveryDate && (
+              {doc.type === 'quote' && doc.validUntil && (
+                <tr>
+                  <th>有効期限</th>
+                  <td>{formatDateJa(doc.validUntil)}</td>
+                </tr>
+              )}
+              {(doc.type === 'quote' || doc.type === 'purchase_order') && doc.deliveryDate && (
                 <tr>
                   <th>納期</th>
                   <td>{formatDateJa(doc.deliveryDate)}</td>
@@ -164,7 +170,7 @@ export default function DocumentPreview({ doc, company }: Props) {
                   <td>{formatDateJa(doc.deliveryDate)}</td>
                 </tr>
               )}
-              {doc.type === 'purchase_order' && doc.deliveryPlace && (
+              {(doc.type === 'quote' || doc.type === 'purchase_order') && doc.deliveryPlace && (
                 <tr>
                   <th>納品場所</th>
                   <td>{doc.deliveryPlace}</td>
@@ -176,7 +182,7 @@ export default function DocumentPreview({ doc, company }: Props) {
                   <td>{formatYen(totals.payable)}（源泉徴収税 {formatYen(totals.withholdingTax)} 控除後）</td>
                 </tr>
               )}
-              {doc.type === 'purchase_order' && doc.paymentTerms && (
+              {(doc.type === 'quote' || doc.type === 'purchase_order') && doc.paymentTerms && (
                 <tr>
                   <th>支払条件</th>
                   <td>{doc.paymentTerms}</td>
