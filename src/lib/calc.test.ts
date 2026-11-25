@@ -158,4 +158,10 @@ describe('帳票番号', () => {
     expect(formatDocumentNumber('2026-11-03', 1)).toBe('20261103-1');
     expect(formatDocumentNumber('2026-11-25', 12)).toBe('20261125-12');
   });
+  it('番号を発行日と連番に分ける', async () => {
+    const { parseDocumentNumber } = await import('../services/documents');
+    expect(parseDocumentNumber('20261125-12')).toEqual({ date: '2026-11-25', seq: 12 });
+    expect(parseDocumentNumber(' 20261103-1 ')).toEqual({ date: '2026-11-03', seq: 1 });
+    expect(parseDocumentNumber('INV-2026-0001')).toBeNull();
+  });
 });

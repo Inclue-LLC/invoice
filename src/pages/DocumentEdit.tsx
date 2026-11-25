@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DocumentPreview from '../components/DocumentPreview';
 import ItemsEditor from '../components/ItemsEditor';
@@ -34,7 +34,15 @@ import {
   validatePl,
 } from '../lib/pl';
 import { listClients } from '../services/clients';
-import { createDocument, getDocument, nextDocumentNumber, updateDocument } from '../services/documents';
+import {
+  allocateDocumentNumber,
+  createDocument,
+  getDocument,
+  isDocumentNumberTaken,
+  peekNextDocumentNumber,
+  syncCounterWithNumber,
+  updateDocument,
+} from '../services/documents';
 import type { Client, ClientType, CompanySettings, DocType, DocumentData, Honorific, PlKind, PlLink } from '../types';
 
 function blankDocument(type: DocType, s: CompanySettings, email: string): DocumentData {
@@ -112,6 +120,9 @@ function deriveDocument(src: DocumentData, srcId: string, type: DocType, s: Comp
   };
 }
 
+/** 利用者に見せるエラー（「保存に失敗しました」を付けずに表示する） */
+class UserError extends Error {}
+
 function copyBank(src: DocumentData, s: CompanySettings): Pick<DocumentData, 'bankInfo' | 'bankAccountId'> {
   const acc = usableBankAccounts(s).find((a) => a.id === src.bankAccountId);
   if (acc) return { bankAccountId: acc.id, bankInfo: acc.text };
@@ -131,6 +142,10 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  /** 作成画面に自動で入れた番号（利用者が書き換えていなければ、保存時にこの番号を確保する） */
+  const autoNumber = useRef('');
+  /** 編集中の帳票の元の番号（変更されたときだけ重複を確認する） */
+  const [originalNumber, setOriginalNumber] = useState('');
 
   const fromId = params.get('from');
 
@@ -148,9 +163,11 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
         if (!d) throw new Error('帳票が見つかりません');
         const { id: _omit, ...rest } = d;
         void _omit;
+        setOriginalNumber(rest.number);
         setDoc(rest);
       } else {
         const type = routeType;
+        autoNumber.current = '';
         if (fromId) {
           const src = await getDocument(fromId);
           if (!src) throw new Error('複製元の帳票が見つかりません');
@@ -161,6 +178,24 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
       }
     })().catch((e) => setError(String(e instanceof Error ? e.message : e)));
   }, [id, routeType, fromId, settingsLoading, settings, email]);
+
+  // 作成画面では、次に付く番号を最初から番号欄に入れておく（発行日を変えたら入れ直す。書き換えた番号はそのまま）
+  useEffect(() => {
+    if (id || !doc) return;
+    const prev = autoNumber.current;
+    if (doc.number && doc.number !== prev) return;
+    let cancelled = false;
+    peekNextDocumentNumber(doc.type, doc.issueDate)
+      .then((n) => {
+        if (cancelled) return;
+        setDoc((d) => (d && (!d.number || d.number === prev) ? { ...d, number: n } : d));
+        autoNumber.current = n;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [id, doc?.type, doc?.issueDate]);
 
   const totals = useMemo(
     () =>
@@ -173,7 +208,8 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
     [doc?.items, doc?.taxMode, doc?.rounding, doc?.withholdingEnabled, doc?.withholdingBaseMode],
   );
 
-  if (error) return <div className="page"><div className="alert alert-error">{error}</div></div>;
+  // 読み込みに失敗したときだけエラーのみを表示する（保存時のエラーは入力内容を残したまま上に表示）
+  if (error && !doc) return <div className="page"><div className="alert alert-error">{error}</div></div>;
   if (!doc || !totals) return <div className="page"><p className="muted">読み込み中…</p></div>;
   // URL の種別と帳票の種別が違う場合は正しい URL に移動する
   if (id && doc.type !== routeType) return <Navigate to={editPath(doc.type, id)} replace />;
@@ -255,12 +291,28 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
       };
       // PL に反映される請求書は自動で「PL記載済」にする
       data.plRecordedDate = plRecordedDateOnSave(data, todayIso());
+      const number = data.number.trim();
       let docId = id;
       if (docId) {
+        if (!number) throw new UserError('番号を入力してください');
+        if (number !== originalNumber) {
+          if (await isDocumentNumberTaken(data.type, number, docId)) {
+            throw new UserError(`番号「${number}」はほかの${info.label}で使われています。別の番号にしてください。`);
+          }
+          await syncCounterWithNumber(data.type, number);
+        }
+        data.number = number;
         await updateDocument(docId, data);
       } else {
-        if (!data.number.trim()) {
-          data.number = await nextDocumentNumber(data.type, data.issueDate);
+        if (!number || number === autoNumber.current) {
+          // 自動で入れた番号のまま → 保存時に確保する（同時に作成した人がいれば次の番号になる）
+          data.number = await allocateDocumentNumber(data.type, data.issueDate);
+        } else {
+          if (await isDocumentNumberTaken(data.type, number)) {
+            throw new UserError(`番号「${number}」はほかの${info.label}で使われています。別の番号にしてください。`);
+          }
+          await syncCounterWithNumber(data.type, number);
+          data.number = number;
         }
         data.createdBy = email;
         docId = await createDocument(data);
@@ -268,7 +320,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
       setDoc(data);
       navigate(afterSave === 'stay' ? editPath(data.type, docId) : printPath(data.type, docId, afterSave), { replace: !id });
     } catch (e) {
-      setError(`保存に失敗しました: ${String(e)}`);
+      setError(e instanceof UserError ? e.message : `保存に失敗しました: ${String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -292,6 +344,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
     );
 
   const previewDoc: DocumentData = { ...doc, totals, number: doc.number || '（保存時に採番）' };
+  const numberIsAuto = !id && doc.number !== '' && doc.number === autoNumber.current;
 
   return (
     <div className="page">
@@ -368,9 +421,14 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                 番号
                 <input
                   value={doc.number}
-                  placeholder="空欄で自動採番（例: 20261125-1）"
+                  placeholder="空欄なら保存時に自動で付けます"
                   onChange={(e) => set('number', e.target.value)}
                 />
+                <span className="field-hint">
+                  {numberIsAuto
+                    ? '自動で入れた番号です。書き換えることもできます。'
+                    : '書き換えた番号は、保存時にほかと重複していないか確認します。'}
+                </span>
               </label>
               <label>
                 {doc.type === 'receipt' ? '領収日' : '発行日'}

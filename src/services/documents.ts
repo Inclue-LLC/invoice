@@ -54,20 +54,63 @@ export function formatDocumentNumber(issueDate: string, seq: number): string {
   return `${issueDate.replace(/-/g, '')}-${seq}`;
 }
 
+/** 「20261125-3」形式の番号を発行日と連番に分ける（形式が違えば null） */
+export function parseDocumentNumber(number: string): { date: string; seq: number } | null {
+  const m = /^(\d{4})(\d{2})(\d{2})-(\d+)$/.exec(number.trim());
+  return m ? { date: `${m[1]}-${m[2]}-${m[3]}`, seq: Number(m[4]) } : null;
+}
+
+const validDate = (issueDate: string) => (/^\d{4}-\d{2}-\d{2}$/.test(issueDate) ? issueDate : todayIso());
+const counterRef = (type: DocType, date: string) => doc(db, 'counters', `${type}_${date.replace(/-/g, '')}`);
+
+/** 次に付く番号を調べる（番号は確保しない。作成画面に最初から表示する用） */
+export async function peekNextDocumentNumber(type: DocType, issueDate: string): Promise<string> {
+  const date = validDate(issueDate);
+  const snap = await getDoc(counterRef(type, date));
+  return formatDocumentNumber(date, (snap.exists() ? (snap.data().seq as number) : 0) + 1);
+}
+
 /**
- * 帳票番号を採番する（例: 20261125-1）。発行日ごと・帳票の種類ごとに 1 から連番。
+ * 番号を1つ確保する（例: 20261125-1）。発行日ごと・帳票の種類ごとに 1 から連番。
  * Firestore のトランザクションで払い出すため、同時発行でも重複しない。
  */
 export async function nextDocumentNumber(type: DocType, issueDate: string): Promise<string> {
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(issueDate) ? issueDate : todayIso();
-  const counterRef = doc(db, 'counters', `${type}_${date.replace(/-/g, '')}`);
+  const date = validDate(issueDate);
+  const ref = counterRef(type, date);
   const seq = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(counterRef);
+    const snap = await tx.get(ref);
     const next = (snap.exists() ? (snap.data().seq as number) : 0) + 1;
-    tx.set(counterRef, { seq: next });
+    tx.set(ref, { seq: next });
     return next;
   });
   return formatDocumentNumber(date, seq);
+}
+
+/** 同じ種類の帳票で、その番号がすでに使われているか（excludeId の帳票は除く） */
+export async function isDocumentNumberTaken(type: DocType, number: string, excludeId?: string): Promise<boolean> {
+  const snap = await getDocs(query(col(), where('type', '==', type), where('number', '==', number.trim())));
+  return snap.docs.some((d) => d.id !== excludeId);
+}
+
+/** 新規保存用に番号を確保する。万一使われていれば（手入力された番号など）次の番号にする */
+export async function allocateDocumentNumber(type: DocType, issueDate: string): Promise<string> {
+  for (let i = 0; i < 20; i++) {
+    const number = await nextDocumentNumber(type, issueDate);
+    if (!(await isDocumentNumberTaken(type, number))) return number;
+  }
+  throw new Error('番号を確保できませんでした。番号を入力して保存してください。');
+}
+
+/** 「20261125-5」のように手入力された番号のあとから自動の連番が続くよう、カウンタを進める */
+export async function syncCounterWithNumber(type: DocType, number: string): Promise<void> {
+  const parsed = parseDocumentNumber(number);
+  if (!parsed) return;
+  const ref = counterRef(type, parsed.date);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists() ? (snap.data().seq as number) : 0;
+    if (parsed.seq > current) tx.set(ref, { seq: parsed.seq });
+  });
 }
 
 /** 種別ごとの一覧（発行日の新しい順）。単一項目の条件のみなので複合インデックスは不要 */

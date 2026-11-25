@@ -352,3 +352,5 @@ details > summary.section-title { cursor: pointer; }
 
 .toolbar-gap { flex: 1; }
 .print-toolbar-alert { max-width: 210mm; margin: 0 auto 12px; }
+
+.field-hint { font-size: 11px; color: var(--muted); }
