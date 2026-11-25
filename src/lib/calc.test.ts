@@ -151,3 +151,11 @@ describe('format', () => {
     expect(isValidRegistrationNumber('1234567890123')).toBe(false);
   });
 });
+
+describe('帳票番号', () => {
+  it('発行日＋その日の連番', async () => {
+    const { formatDocumentNumber } = await import('../services/documents');
+    expect(formatDocumentNumber('2026-11-03', 1)).toBe('20261103-1');
+    expect(formatDocumentNumber('2026-11-25', 12)).toBe('20261125-12');
+  });
+});

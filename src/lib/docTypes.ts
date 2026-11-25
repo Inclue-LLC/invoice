@@ -8,7 +8,6 @@ export interface DocTypeInfo {
   amountLabel: string;
   /** 本文の定型文 */
   lead: string;
-  defaultPrefix: string;
   /** 源泉徴収税の差し引きに対応するか（発注書のみ） */
   supportsWithholding: boolean;
   /** URL のパス */
@@ -23,7 +22,6 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     recipientLabel: '宛先',
     amountLabel: '御見積金額',
     lead: '下記の通りお見積り申し上げます。',
-    defaultPrefix: 'QT',
     supportsWithholding: false,
     path: 'quotes',
     paidLabel: null,
@@ -33,7 +31,6 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     recipientLabel: '請求先',
     amountLabel: 'ご請求金額',
     lead: '下記の通りご請求申し上げます。',
-    defaultPrefix: 'INV',
     supportsWithholding: false,
     path: 'invoices',
     paidLabel: '入金済',
@@ -43,7 +40,6 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     recipientLabel: '発注先',
     amountLabel: '発注金額',
     lead: '下記の通り発注いたします。',
-    defaultPrefix: 'PO',
     supportsWithholding: true,
     path: 'purchase-orders',
     paidLabel: '支払済',
@@ -53,7 +49,6 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     recipientLabel: '納品先',
     amountLabel: '納品金額',
     lead: '下記の通り納品いたします。',
-    defaultPrefix: 'DN',
     supportsWithholding: false,
     path: 'delivery-notes',
     paidLabel: null,
@@ -63,7 +58,6 @@ export const DOC_TYPES: Record<DocType, DocTypeInfo> = {
     recipientLabel: '宛名',
     amountLabel: '金額',
     lead: '上記正に領収いたしました。',
-    defaultPrefix: 'RCP',
     supportsWithholding: false,
     path: 'receipts',
     paidLabel: null,

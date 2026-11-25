@@ -39,7 +39,6 @@ export default function Settings() {
   if (loading) return <div className="page"><p className="muted">読み込み中…</p></div>;
 
   const set = <K extends keyof CompanySettings>(k: K, v: CompanySettings[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const setPrefix = (t: DocType, v: string) => setForm((f) => ({ ...f, prefixes: { ...f.prefixes, [t]: v } }));
   const setNote = (t: DocType, v: string) => setForm((f) => ({ ...f, defaultNotes: { ...f.defaultNotes, [t]: v } }));
 
   const setAccount = (id: string, patch: Partial<BankAccount>) =>
@@ -251,7 +250,6 @@ export default function Settings() {
           <thead>
             <tr>
               <th>種別</th>
-              <th style={{ width: 140 }}>番号プレフィックス</th>
               <th>備考の初期値</th>
             </tr>
           </thead>
@@ -259,10 +257,6 @@ export default function Settings() {
             {DOC_TYPE_ORDER.map((t) => (
               <tr key={t}>
                 <td>{DOC_TYPES[t].label}</td>
-                <td>
-                  <input value={form.prefixes[t]} onChange={(e) => setPrefix(t, e.target.value)} />
-                  <div className="muted small">例: {form.prefixes[t] ? `${form.prefixes[t]}-` : ''}2026-0001</div>
-                </td>
                 <td>
                   <textarea rows={2} value={form.defaultNotes[t]} onChange={(e) => setNote(t, e.target.value)} />
                 </td>

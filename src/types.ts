@@ -178,8 +178,6 @@ export interface CompanySettings {
   stampImage: string;
   defaultTaxMode: TaxMode;
   defaultRounding: Rounding;
-  /** 帳票種別ごとの番号プレフィックス */
-  prefixes: Record<DocType, string>;
   /** 帳票種別ごとの備考初期値 */
   defaultNotes: Record<DocType, string>;
   /** 請求書の支払期限（発行日からの日数, 0 = 翌月末） */

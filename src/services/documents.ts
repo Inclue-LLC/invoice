@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DOC_TYPES } from '../lib/docTypes';
+import { todayIso } from '../lib/format';
 import type { DocType, DocumentData, StoredDocument } from '../types';
 
 const col = () => collection(db, 'documents');
@@ -48,21 +49,25 @@ export function normalizeDocument(raw: Partial<DocumentData>): DocumentData {
   };
 }
 
+/** 帳票番号の書式: 発行日（YYYYMMDD）＋その日の連番（例: 20261125-1） */
+export function formatDocumentNumber(issueDate: string, seq: number): string {
+  return `${issueDate.replace(/-/g, '')}-${seq}`;
+}
+
 /**
- * 帳票番号を採番する（例: INV-2026-0001）。
- * Firestore のトランザクションで年・種別ごとの連番を払い出すため、同時発行でも重複しない。
+ * 帳票番号を採番する（例: 20261125-1）。発行日ごと・帳票の種類ごとに 1 から連番。
+ * Firestore のトランザクションで払い出すため、同時発行でも重複しない。
  */
-export async function nextDocumentNumber(type: DocType, prefix: string, issueDate: string): Promise<string> {
-  const year = issueDate.slice(0, 4) || String(new Date().getFullYear());
-  const counterRef = doc(db, 'counters', `${type}_${year}`);
+export async function nextDocumentNumber(type: DocType, issueDate: string): Promise<string> {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(issueDate) ? issueDate : todayIso();
+  const counterRef = doc(db, 'counters', `${type}_${date.replace(/-/g, '')}`);
   const seq = await runTransaction(db, async (tx) => {
     const snap = await tx.get(counterRef);
     const next = (snap.exists() ? (snap.data().seq as number) : 0) + 1;
     tx.set(counterRef, { seq: next });
     return next;
   });
-  const head = prefix ? `${prefix}-` : '';
-  return `${head}${year}-${String(seq).padStart(4, '0')}`;
+  return formatDocumentNumber(date, seq);
 }
 
 /** 種別ごとの一覧（発行日の新しい順）。単一項目の条件のみなので複合インデックスは不要 */
@@ -70,7 +75,7 @@ export async function listDocumentsByType(type: DocType): Promise<StoredDocument
   const snap = await getDocs(query(col(), where('type', '==', type)));
   return snap.docs
     .map((d) => ({ ...normalizeDocument(d.data() as DocumentData), id: d.id }))
-    .sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number));
+    .sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number, 'ja', { numeric: true }));
 }
 
 export async function getDocument(id: string): Promise<StoredDocument | null> {

@@ -260,7 +260,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
         await updateDocument(docId, data);
       } else {
         if (!data.number.trim()) {
-          data.number = await nextDocumentNumber(data.type, settings.prefixes[data.type], data.issueDate);
+          data.number = await nextDocumentNumber(data.type, data.issueDate);
         }
         data.createdBy = email;
         docId = await createDocument(data);
@@ -368,7 +368,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
                 番号
                 <input
                   value={doc.number}
-                  placeholder="空欄で自動採番"
+                  placeholder="空欄で自動採番（例: 20261125-1）"
                   onChange={(e) => set('number', e.target.value)}
                 />
               </label>
