@@ -49,6 +49,28 @@ export interface Totals {
   payable: number;
 }
 
+/** PL管理（売上PL管理アプリ）の区分 */
+export type PlCountry = 'CN' | 'JP';
+export type PlKind = 'license' | 'offline' | 'other';
+
+/**
+ * 請求書を PL管理の売上に反映するための区分。
+ * PL管理アプリがこの項目を読み取り、税込合計を「お支払期限の月」の売上として集計する。
+ */
+export interface PlLink {
+  /** 請求書ツールの売上はすべて日本（選択欄は無く、常に 'JP'） */
+  country: PlCountry;
+  kind: PlKind;
+  /** ライセンス・オフライン: キャラクター */
+  character: string;
+  /** ライセンス: MG / ロイヤリティ、オフライン: POP UP / 委託販売 */
+  type: string;
+  /** オフライン: お店・イベント名 */
+  venue: string;
+  /** その他: 案件内容 */
+  content: string;
+}
+
 export interface DocumentData {
   type: DocType;
   number: string;
@@ -93,6 +115,8 @@ export interface DocumentData {
   withholdingPaidDate: string;
   /** 請求書: PL（損益計算書）に記載した日（YYYY-MM-DD、未記載は空）。入金とは別に管理する */
   plRecordedDate: string;
+  /** 請求書: PL管理に反映する区分（null = 反映しない） */
+  pl: PlLink | null;
   /** 請求書: 入金の記録（銀行明細の照合結果など） */
   paymentMemo: string;
   /** 変換元の帳票ID */
