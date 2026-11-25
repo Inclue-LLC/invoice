@@ -101,7 +101,8 @@ export const listPath = (t: DocType) => `/${DOC_TYPES[t].path}`;
 export const newPath = (t: DocType, fromId?: string) =>
   `/${DOC_TYPES[t].path}/new${fromId ? `?from=${encodeURIComponent(fromId)}` : ''}`;
 export const editPath = (t: DocType, id: string) => `/${DOC_TYPES[t].path}/${id}`;
-export const printPath = (t: DocType, id: string) => `/${DOC_TYPES[t].path}/${id}/print`;
+export const printPath = (t: DocType, id: string, action?: 'print' | 'pdf') =>
+  `/${DOC_TYPES[t].path}/${id}/print${action ? `?action=${action}` : ''}`;
 
 export function isDocType(v: unknown): v is DocType {
   return typeof v === 'string' && v in DOC_TYPES;

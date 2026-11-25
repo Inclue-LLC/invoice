@@ -331,8 +331,11 @@ export default function DocumentList({ type }: { type: DocType }) {
                       </td>
                     )}
                     <td className="row-actions">
-                      <Link className="btn btn-sm" to={printPath(type, d.id)}>
-                        印刷/PDF
+                      <Link className="btn btn-sm" to={printPath(type, d.id, 'print')} title="印刷する">
+                        印刷
+                      </Link>
+                      <Link className="btn btn-sm" to={printPath(type, d.id, 'pdf')} title="PDFをダウンロードする">
+                        PDF
                       </Link>
                       <Link className="btn btn-sm" to={newPath(type, d.id)} title="この帳票をコピーして新規作成">
                         コピー

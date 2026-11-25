@@ -230,7 +230,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
     });
   };
 
-  const save = async (afterSave: 'stay' | 'print') => {
+  const save = async (afterSave: 'stay' | 'print' | 'pdf') => {
     setError('');
     if (!doc.clientName.trim()) return setError(`${info.recipientLabel}を入力してください`);
     const items = doc.items.filter((i) => i.name.trim() || i.unitPrice);
@@ -266,7 +266,7 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
         docId = await createDocument(data);
       }
       setDoc(data);
-      navigate(afterSave === 'print' ? printPath(data.type, docId) : editPath(data.type, docId), { replace: !id });
+      navigate(afterSave === 'stay' ? editPath(data.type, docId) : printPath(data.type, docId, afterSave), { replace: !id });
     } catch (e) {
       setError(`保存に失敗しました: ${String(e)}`);
     } finally {
@@ -329,8 +329,11 @@ export default function DocumentEdit({ type: routeType }: { type: DocType }) {
           <button className="btn" disabled={saving} onClick={() => void save('stay')}>
             保存
           </button>
-          <button className="btn btn-primary" disabled={saving} onClick={() => void save('print')}>
-            保存して印刷 / PDF
+          <button className="btn" disabled={saving} onClick={() => void save('print')}>
+            保存して印刷
+          </button>
+          <button className="btn btn-primary" disabled={saving} onClick={() => void save('pdf')}>
+            保存してPDF
           </button>
         </div>
       </div>
